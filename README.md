@@ -3,12 +3,14 @@
 Company-only Monkeytype-style typing app for Dohoro employees.
 
 Parent PRD: [issue #1](https://github.com/khanal-samir/Dohoro-type/issues/1)  
-Foundation slice: [issue #2](https://github.com/khanal-samir/Dohoro-type/issues/2)
+Foundation slice: [issue #2](https://github.com/khanal-samir/Dohoro-type/issues/2)  
+Identity slice: [issue #3](https://github.com/khanal-samir/Dohoro-type/issues/3)
 
 ## Stack
 
-- **TanStack Start** (Vite + file routes)
+- **TanStack Start** (Vite + file routes + server functions)
 - **Supabase** — Postgres + Realtime (no Supabase Auth)
+- **Zustand** + localStorage — allowlist email session
 - **Vitest** — domain unit tests
 - **Playwright** — E2E smoke / acceptance
 
@@ -52,13 +54,23 @@ First Playwright run may need browsers:
 pnpm exec playwright install chromium
 ```
 
+## Try identity
+
+1. Apply migration + seed, fill `.env`.
+2. `pnpm dev` → http://localhost:3000/login
+3. Sign in as `samir1.dohoro@gmail.com` (session persists in localStorage).
+4. Open **Manage users** to create allowlisted employees (optional username / avatar URL; blank avatar → DiceBear).
+
 ## Project layout
 
 ```
 src/
-  domain/           # Pure modules (username, seed fixtures) — TDD here first
+  domain/           # Pure modules (auth, username, avatar, access) — TDD first
   lib/supabase/     # Client + Database types
-  routes/           # TanStack file routes
+  lib/users/        # Row mapping + Supabase lookups
+  server/           # TanStack Start server functions (login + admin CRUD)
+  session/          # Zustand + localStorage session
+  routes/           # /login, /, /admin/users
 supabase/
   migrations/       # SQL schema
   seed.sql          # Admin + sentences
