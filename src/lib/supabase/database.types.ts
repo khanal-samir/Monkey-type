@@ -88,7 +88,15 @@ export type Database = {
           accuracy?: number
           created_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'attempts_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
       }
       daily_bests: {
         Row: {
@@ -124,7 +132,22 @@ export type Database = {
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'daily_bests_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'daily_bests_attempt_id_fkey'
+            columns: ['attempt_id']
+            isOneToOne: false
+            referencedRelation: 'attempts'
+            referencedColumns: ['id']
+          },
+        ]
       }
     }
     Views: Record<string, never>

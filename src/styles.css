@@ -181,3 +181,19 @@ body {
   outline: 1px dashed var(--border);
   outline-offset: 8px;
 }
+
+.scoreboard-title {
+  color: var(--muted);
+}
+
+.scoreboard-list {
+  border-top: 1px solid var(--border);
+}
+
+.scoreboard-row {
+  border-bottom: 1px solid var(--border);
+}
+
+.scoreboard-row:last-child {
+  border-bottom: none;
+}

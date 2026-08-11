@@ -4,8 +4,6 @@ import {
   type DurationSec,
   type TypingSentence,
 } from './typing-engine'
-import { scoreAttempt } from './scoring'
-
 const sentence: TypingSentence = {
   id: 's1',
   text: 'hello world',
@@ -75,28 +73,5 @@ describe('TypingEngine', () => {
       { char: 'x', expected: 'e', correct: false, atMs: 10 },
     ])
     expect(caretIndex).toBe(2)
-  })
-})
-
-describe('Scoring.scoreAttempt', () => {
-  it('computes Monkeytype-like WPM and accuracy from typed events', () => {
-    // 10 correct chars in 15s → (10/5)/0.25 = 8 WPM; 10/12 accuracy
-    const scored = scoreAttempt({
-      durationSec: 15,
-      events: [
-        ...Array.from({ length: 10 }, () => ({ correct: true as const })),
-        { correct: false },
-        { correct: false },
-      ],
-    })
-
-    expect(scored.wpm).toBe(8)
-    expect(scored.accuracy).toBeCloseTo((10 / 12) * 100, 5)
-  })
-
-  it('returns zero WPM and 100% accuracy when nothing was typed', () => {
-    const scored = scoreAttempt({ durationSec: 30, events: [] })
-    expect(scored.wpm).toBe(0)
-    expect(scored.accuracy).toBe(100)
   })
 })

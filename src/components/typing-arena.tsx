@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useServerFn } from '@tanstack/react-start'
 import { pickActiveSentence } from '#/server/sentences'
+import { submitAttempt } from '#/server/rankings'
 import { scoreAttempt } from '#/domain/scoring'
 import {
   createTypingEngine,
-  TYPING_DURATIONS,
   type CompletedAttempt,
   type DurationSec,
   type TypingEngine,
@@ -14,6 +14,9 @@ import {
 
 type TypingArenaProps = {
   userId: string
+  duration: DurationSec
+  /** Fired after a completed run is persisted (always), with whether daily best changed. */
+  onAttemptSaved?: (info: { dailyBestUpdated: boolean }) => void
 }
 
 type LiveScore = {
@@ -21,22 +24,80 @@ type LiveScore = {
   accuracy: number
 }
 
-export function TypingArena({ userId }: TypingArenaProps) {
+export function TypingArena({
+  userId,
+  duration,
+  onAttemptSaved,
+}: TypingArenaProps) {
   const pickFn = useServerFn(pickActiveSentence)
+  const submitFn = useServerFn(submitAttempt)
   const engineRef = useRef<TypingEngine | null>(null)
   const focusRef = useRef<HTMLDivElement>(null)
+  const savedAttemptKeyRef = useRef<string | null>(null)
+  const onAttemptSavedRef = useRef(onAttemptSaved)
+  onAttemptSavedRef.current = onAttemptSaved
 
-  const [duration, setDuration] = useState<DurationSec>(30)
   const [state, setState] = useState<TypingEngineState | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [completedScore, setCompletedScore] = useState<LiveScore | null>(null)
+  const [saveStatus, setSaveStatus] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >('idle')
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [dailyBestUpdated, setDailyBestUpdated] = useState(false)
 
   const sync = useCallback(() => {
     const engine = engineRef.current
     if (!engine) return
     setState(engine.getState())
   }, [])
+
+  const persistResult = useCallback(
+    async (result: CompletedAttempt) => {
+      const key = `${result.startedAtMs}-${result.endedAtMs}-${result.durationSec}`
+      if (savedAttemptKeyRef.current === key) return
+      savedAttemptKeyRef.current = key
+
+      const score = scoreAttempt(result)
+      setCompletedScore(score)
+      setSaveStatus('saving')
+      setSaveError(null)
+      setDailyBestUpdated(false)
+
+      try {
+        const saved = await submitFn({
+          data: {
+            userId,
+            durationSec: result.durationSec,
+            wpm: score.wpm,
+            accuracy: score.accuracy,
+          },
+        })
+        setSaveStatus('saved')
+        setDailyBestUpdated(saved.dailyBestUpdated)
+        onAttemptSavedRef.current?.({
+          dailyBestUpdated: saved.dailyBestUpdated,
+        })
+      } catch (err) {
+        setSaveStatus('error')
+        setSaveError(
+          err instanceof Error ? err.message : 'Failed to save attempt.',
+        )
+        savedAttemptKeyRef.current = null
+      }
+    },
+    [submitFn, userId],
+  )
+
+  const handleCompleted = useCallback(
+    (after: TypingEngineState) => {
+      if (after.status !== 'completed' || !after.result) return
+      setCompletedScore(scoreAttempt(after.result))
+      void persistResult(after.result)
+    },
+    [persistResult],
+  )
 
   const startWithSentence = useCallback(
     (sentence: TypingSentence, nextDuration: DurationSec) => {
@@ -45,7 +106,11 @@ export function TypingArena({ userId }: TypingArenaProps) {
         sentence,
       })
       engineRef.current = engine
+      savedAttemptKeyRef.current = null
       setCompletedScore(null)
+      setSaveStatus('idle')
+      setSaveError(null)
+      setDailyBestUpdated(false)
       setState(engine.getState())
       setLoading(false)
       focusRef.current?.focus()
@@ -75,9 +140,9 @@ export function TypingArena({ userId }: TypingArenaProps) {
 
   useEffect(() => {
     void loadSentence(duration)
-    // Initial load only — duration changes handled explicitly.
+    // Reload when identity or shared duration changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId])
+  }, [userId, duration])
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -89,23 +154,15 @@ export function TypingArena({ userId }: TypingArenaProps) {
       const after = engine.getState()
       setState(after)
       if (after.status === 'completed' && after.result) {
-        setCompletedScore(scoreAttempt(after.result))
+        handleCompleted(after)
       }
     }, 100)
     return () => window.clearInterval(id)
-  }, [])
+  }, [handleCompleted])
 
   const discardAndRestart = useCallback(() => {
     void loadSentence(duration)
   }, [duration, loadSentence])
-
-  const onDurationChange = useCallback(
-    (next: DurationSec) => {
-      setDuration(next)
-      void loadSentence(next)
-    },
-    [loadSentence],
-  )
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -134,14 +191,14 @@ export function TypingArena({ userId }: TypingArenaProps) {
         const after = engine.getState()
         setState(after)
         if (after.status === 'completed' && after.result) {
-          setCompletedScore(scoreAttempt(after.result))
+          handleCompleted(after)
         }
       }
     }
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [discardAndRestart, sync])
+  }, [discardAndRestart, handleCompleted, sync])
 
   const remainingSec = state
     ? Math.ceil(state.remainingMs / 1000)
@@ -149,27 +206,6 @@ export function TypingArena({ userId }: TypingArenaProps) {
 
   return (
     <section className="typing-arena flex w-full flex-col items-center gap-8">
-      <div
-        className="duration-tabs flex gap-1 rounded-lg p-1"
-        role="tablist"
-        aria-label="Duration"
-      >
-        {TYPING_DURATIONS.map((d) => (
-          <button
-            key={d}
-            type="button"
-            role="tab"
-            aria-selected={duration === d}
-            className={`duration-tab rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              duration === d ? 'duration-tab-active' : ''
-            }`}
-            onClick={() => onDurationChange(d)}
-          >
-            {d}
-          </button>
-        ))}
-      </div>
-
       <div className="timer-display font-mono text-2xl tabular-nums tracking-tight">
         {state?.status === 'completed' ? 0 : remainingSec}
       </div>
@@ -208,7 +244,13 @@ export function TypingArena({ userId }: TypingArenaProps) {
       </div>
 
       {state?.status === 'completed' && state.result && completedScore ? (
-        <ResultSummary result={state.result} score={completedScore} />
+        <ResultSummary
+          result={state.result}
+          score={completedScore}
+          saveStatus={saveStatus}
+          saveError={saveError}
+          dailyBestUpdated={dailyBestUpdated}
+        />
       ) : null}
     </section>
   )
@@ -239,9 +281,15 @@ function TypingText({ state }: { state: TypingEngineState }) {
 function ResultSummary({
   result,
   score,
+  saveStatus,
+  saveError,
+  dailyBestUpdated,
 }: {
   result: CompletedAttempt
   score: LiveScore
+  saveStatus: 'idle' | 'saving' | 'saved' | 'error'
+  saveError: string | null
+  dailyBestUpdated: boolean
 }) {
   return (
     <div className="result-panel w-full max-w-md text-center" role="status">
@@ -263,7 +311,15 @@ function ResultSummary({
         </div>
       </div>
       <p className="typing-hint mt-3 text-xs">
-        Result ready for scoring persistence (next slice). Restart to try again.
+        {saveStatus === 'saving'
+          ? 'Saving attempt…'
+          : saveStatus === 'saved'
+            ? dailyBestUpdated
+              ? 'Saved · new daily best for this duration'
+              : 'Saved · daily best unchanged'
+            : saveStatus === 'error'
+              ? (saveError ?? 'Save failed')
+              : 'Restart to try again'}
       </p>
     </div>
   )

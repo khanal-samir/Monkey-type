@@ -1,6 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { DurationTabs } from '#/components/duration-tabs'
+import { Scoreboard } from '#/components/scoreboard'
 import { TypingArena } from '#/components/typing-arena'
+import type { DurationSec } from '#/domain/typing-engine'
 import { useSessionStore } from '#/session/store'
 import { useSessionHydrated } from '#/session/use-session-hydrated'
 
@@ -11,6 +14,8 @@ function Home() {
   const hydrated = useSessionHydrated()
   const user = useSessionStore((s) => s.user)
   const clearSession = useSessionStore((s) => s.clearSession)
+  const [duration, setDuration] = useState<DurationSec>(30)
+  const [boardRefresh, setBoardRefresh] = useState(0)
 
   useEffect(() => {
     if (hydrated && !user) {
@@ -85,7 +90,27 @@ function Home() {
         </div>
       </header>
 
-      <TypingArena userId={user.id} />
+      <div className="flex justify-center">
+        <DurationTabs value={duration} onChange={setDuration} />
+      </div>
+
+      <TypingArena
+        userId={user.id}
+        duration={duration}
+        onAttemptSaved={({ dailyBestUpdated }) => {
+          if (dailyBestUpdated) {
+            setBoardRefresh((n) => n + 1)
+          }
+        }}
+      />
+
+      <div className="flex justify-center border-t border-[var(--border)] pt-8">
+        <Scoreboard
+          userId={user.id}
+          durationSec={duration}
+          refreshToken={boardRefresh}
+        />
+      </div>
     </main>
   )
 }
