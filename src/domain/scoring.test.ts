@@ -38,4 +38,28 @@ describe('Scoring.scoreAttempt', () => {
     expect(scored.wpm).toBe(0)
     expect(scored.accuracy).toBe(100)
   })
+
+  it('uses actual elapsed time for WPM when finishing early', () => {
+    // 10 correct chars in 5s (early finish on a 60s board) → (10/5)/(5/60) = 24 WPM
+    const scored = scoreAttempt({
+      durationSec: 60,
+      events: Array.from({ length: 10 }, () => ({ correct: true as const })),
+      startedAtMs: 1_000,
+      endedAtMs: 6_000,
+    })
+
+    expect(scored.wpm).toBe(24)
+    expect(scored.accuracy).toBe(100)
+  })
+
+  it('uses elapsedMs override when provided', () => {
+    // 5 correct in 2.5s → (5/5)/(2.5/60) = 24 WPM
+    const scored = scoreAttempt({
+      durationSec: 15,
+      events: Array.from({ length: 5 }, () => ({ correct: true as const })),
+      elapsedMs: 2_500,
+    })
+
+    expect(scored.wpm).toBe(24)
+  })
 })

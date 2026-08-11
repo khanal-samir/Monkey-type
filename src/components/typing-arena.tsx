@@ -37,21 +37,41 @@ export function TypingArena({
   const savedAttemptKeyRef = useRef<string | null>(null)
   const onAttemptSavedRef = useRef(onAttemptSaved)
   onAttemptSavedRef.current = onAttemptSaved
+  const pendingRestartRef = useRef(false)
 
   const [state, setState] = useState<TypingEngineState | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [completedScore, setCompletedScore] = useState<LiveScore | null>(null)
+  const [liveScore, setLiveScore] = useState<LiveScore | null>(null)
+  const [pendingRestart, setPendingRestart] = useState(false)
   const [saveStatus, setSaveStatus] = useState<
     'idle' | 'saving' | 'saved' | 'error'
   >('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
   const [dailyBestUpdated, setDailyBestUpdated] = useState(false)
 
+  const clearPendingRestart = useCallback(() => {
+    pendingRestartRef.current = false
+    setPendingRestart(false)
+  }, [])
+
   const sync = useCallback(() => {
     const engine = engineRef.current
     if (!engine) return
-    setState(engine.getState())
+    const next = engine.getState()
+    setState(next)
+    if (next.status === 'running' && next.events.length > 0) {
+      setLiveScore(
+        scoreAttempt({
+          durationSec: next.durationSec,
+          events: next.events,
+          elapsedMs: Math.max(next.elapsedMs, 1),
+        }),
+      )
+    } else if (next.status === 'idle') {
+      setLiveScore(null)
+    }
   }, [])
 
   const persistResult = useCallback(
@@ -62,6 +82,7 @@ export function TypingArena({
 
       const score = scoreAttempt(result)
       setCompletedScore(score)
+      setLiveScore(null)
       setSaveStatus('saving')
       setSaveError(null)
       setDailyBestUpdated(false)
@@ -94,10 +115,12 @@ export function TypingArena({
   const handleCompleted = useCallback(
     (after: TypingEngineState) => {
       if (after.status !== 'completed' || !after.result) return
+      clearPendingRestart()
       setCompletedScore(scoreAttempt(after.result))
+      setLiveScore(null)
       void persistResult(after.result)
     },
-    [persistResult],
+    [clearPendingRestart, persistResult],
   )
 
   const startWithSentence = useCallback(
@@ -109,15 +132,17 @@ export function TypingArena({
       })
       engineRef.current = engine
       savedAttemptKeyRef.current = null
+      clearPendingRestart()
       setCompletedScore(null)
+      setLiveScore(null)
       setSaveStatus('idle')
       setSaveError(null)
       setDailyBestUpdated(false)
       setState(engine.getState())
       setLoading(false)
-      focusRef.current?.focus()
+      requestAnimationFrame(() => focusRef.current?.focus())
     },
-    [],
+    [clearPendingRestart],
   )
 
   const loadSentence = useCallback(
@@ -157,21 +182,45 @@ export function TypingArena({
       setState(after)
       if (after.status === 'completed' && after.result) {
         handleCompleted(after)
+      } else if (after.events.length > 0) {
+        setLiveScore(
+          scoreAttempt({
+            durationSec: after.durationSec,
+            events: after.events,
+            elapsedMs: Math.max(after.elapsedMs, 1),
+          }),
+        )
       }
     }, 100)
     return () => window.clearInterval(id)
   }, [handleCompleted])
 
   const discardAndRestart = useCallback(() => {
+    clearPendingRestart()
     void loadSentence(duration)
-  }, [duration, loadSentence])
+  }, [clearPendingRestart, duration, loadSentence])
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const engine = engineRef.current
       if (!engine) return
 
-      if (e.key === 'Tab' || e.key === 'Escape') {
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        pendingRestartRef.current = true
+        setPendingRestart(true)
+        return
+      }
+
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        if (pendingRestartRef.current) {
+          clearPendingRestart()
+        }
+        return
+      }
+
+      if (e.key === 'Enter' && pendingRestartRef.current) {
         e.preventDefault()
         discardAndRestart()
         return
@@ -179,6 +228,7 @@ export function TypingArena({
 
       if (e.key === 'Backspace') {
         e.preventDefault()
+        if (engine.getState().status === 'completed') return
         engine.backspace()
         sync()
         return
@@ -188,28 +238,69 @@ export function TypingArena({
         e.preventDefault()
         const before = engine.getState()
         if (before.status === 'completed') return
+        if (pendingRestartRef.current) {
+          clearPendingRestart()
+        }
         engine.inputChar(e.key)
         engine.tick()
         const after = engine.getState()
         setState(after)
         if (after.status === 'completed' && after.result) {
           handleCompleted(after)
+        } else if (after.events.length > 0) {
+          setLiveScore(
+            scoreAttempt({
+              durationSec: after.durationSec,
+              events: after.events,
+              elapsedMs: Math.max(after.elapsedMs, 1),
+            }),
+          )
         }
       }
     }
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [discardAndRestart, handleCompleted, sync])
+  }, [clearPendingRestart, discardAndRestart, handleCompleted, sync])
 
   const remainingSec = state
     ? Math.ceil(state.remainingMs / 1000)
     : duration
 
+  const displayWpm =
+    state?.status === 'running' && liveScore
+      ? Math.round(liveScore.wpm)
+      : state?.status === 'completed' && completedScore
+        ? Math.round(completedScore.wpm)
+        : null
+  const displayAcc =
+    state?.status === 'running' && liveScore
+      ? Math.round(liveScore.accuracy)
+      : state?.status === 'completed' && completedScore
+        ? Math.round(completedScore.accuracy)
+        : null
+
   return (
-    <section className="typing-arena flex w-full flex-col items-center gap-8">
-      <div className="timer-display font-mono text-2xl tabular-nums tracking-tight">
-        {state?.status === 'completed' ? 0 : remainingSec}
+    <section className="typing-arena flex w-full flex-col items-center gap-6">
+      <div className="live-stats flex items-end justify-center gap-8 tabular-nums">
+        <div className="stat-block text-center">
+          <p className="stat-value font-mono text-3xl tracking-tight sm:text-4xl">
+            {state?.status === 'completed' ? 0 : remainingSec}
+          </p>
+          <p className="stat-label">time</p>
+        </div>
+        <div className="stat-block text-center">
+          <p className="stat-value font-mono text-3xl tracking-tight sm:text-4xl">
+            {displayWpm ?? '—'}
+          </p>
+          <p className="stat-label">wpm</p>
+        </div>
+        <div className="stat-block text-center">
+          <p className="stat-value font-mono text-3xl tracking-tight sm:text-4xl">
+            {displayAcc ?? '—'}
+          </p>
+          <p className="stat-label">acc</p>
+        </div>
       </div>
 
       {loadError ? (
@@ -230,7 +321,19 @@ export function TypingArena({
         ) : (
           <TypingText state={state} />
         )}
+        {state && state.status === 'idle' && !loading ? (
+          <p className="click-hint mt-4 text-center text-xs">
+            click here or start typing
+          </p>
+        ) : null}
       </div>
+
+      {pendingRestart ? (
+        <p className="restart-pending text-sm" role="status">
+          Press <kbd className="kbd">Enter</kbd> to restart ·{' '}
+          <kbd className="kbd">Esc</kbd> to cancel
+        </p>
+      ) : null}
 
       <div className="flex flex-wrap items-center justify-center gap-3">
         <button
@@ -240,10 +343,9 @@ export function TypingArena({
         >
           Restart
         </button>
-        <p className="typing-hint text-xs">
-          Tab or Escape restarts · incomplete runs are discarded
-        </p>
       </div>
+
+      <ShortcutLegend completed={state?.status === 'completed'} />
 
       {state?.status === 'completed' && state.result && completedScore ? (
         <ResultSummary
@@ -255,6 +357,25 @@ export function TypingArena({
         />
       ) : null}
     </section>
+  )
+}
+
+function ShortcutLegend({ completed }: { completed?: boolean }) {
+  return (
+    <ul className="shortcut-legend flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs">
+      <li>
+        <kbd className="kbd">Tab</kbd>
+        <span className="shortcut-plus">+</span>
+        <kbd className="kbd">Enter</kbd>
+        <span className="shortcut-desc">
+          {completed ? 'next test' : 'restart'}
+        </span>
+      </li>
+      <li>
+        <kbd className="kbd">Esc</kbd>
+        <span className="shortcut-desc">cancel restart</span>
+      </li>
+    </ul>
   )
 }
 
@@ -296,7 +417,7 @@ function ResultSummary({
   return (
     <div className="result-panel w-full max-w-md text-center" role="status">
       <p className="result-label text-xs uppercase tracking-[0.2em]">
-        Run complete · {result.durationSec}s
+        Run complete · {result.durationSec}s board
       </p>
       <div className="mt-3 flex justify-center gap-10">
         <div>
@@ -321,7 +442,7 @@ function ResultSummary({
               : 'Saved · daily best unchanged'
             : saveStatus === 'error'
               ? (saveError ?? 'Save failed')
-              : 'Restart to try again'}
+              : 'Tab + Enter for next test'}
       </p>
     </div>
   )

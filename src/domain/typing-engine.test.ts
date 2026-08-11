@@ -91,4 +91,25 @@ describe('TypingEngine', () => {
     expect(state.result?.durationSec).toBe(15)
   })
 
+  it('completes when the last character of the sentence is typed', () => {
+    const short: TypingSentence = { id: 's3', text: 'hi' }
+    const engine = createTypingEngine({
+      durationSec: 60,
+      sentence: short,
+      nowMs: () => 0,
+    })
+
+    engine.inputChar('h', 0)
+    expect(engine.getState().status).toBe('running')
+
+    engine.inputChar('i', 1_200)
+    const state = engine.getState()
+    expect(state.status).toBe('completed')
+    expect(state.result).not.toBeNull()
+    expect(state.result?.durationSec).toBe(60)
+    expect(state.result?.typed).toBe('hi')
+    expect(state.result?.endedAtMs).toBe(1_200)
+    expect(state.result?.startedAtMs).toBe(0)
+  })
+
 })

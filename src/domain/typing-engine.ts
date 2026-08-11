@@ -1,5 +1,6 @@
 /**
- * TypingEngine — timed sentence runs; restart discards; timer completion emits result.
+ * TypingEngine — timed sentence runs; completes on last char or timer zero;
+ * restart discards incomplete runs.
  */
 
 export type DurationSec = 15 | 30 | 60
@@ -41,6 +42,8 @@ export type TypingEngineState = {
   typed: string
   events: KeyEvent[]
   remainingMs: number
+  /** Milliseconds since first key (0 while idle). */
+  elapsedMs: number
   result: CompletedAttempt | null
 }
 
@@ -89,6 +92,7 @@ function buildIdleState(
     typed: '',
     events: [],
     remainingMs: timerMs,
+    elapsedMs: 0,
     result: null,
   }
 }
@@ -127,6 +131,7 @@ export function createTypingEngine(options: TypingEngineOptions): TypingEngine {
       ...state,
       status: 'completed',
       remainingMs: 0,
+      elapsedMs: Math.max(0, endedAtMs - startedAtMs),
       result,
     }
   }
@@ -169,6 +174,12 @@ export function createTypingEngine(options: TypingEngineOptions): TypingEngine {
         caretIndex: state.caretIndex + 1,
         typed: state.typed + char,
         events: [...state.events, event],
+        elapsedMs: relativeMs,
+        remainingMs: Math.max(0, timerMs - relativeMs),
+      }
+
+      if (state.caretIndex >= text.length) {
+        complete(now)
       }
     },
 
@@ -197,7 +208,7 @@ export function createTypingEngine(options: TypingEngineOptions): TypingEngine {
         return
       }
 
-      state = { ...state, remainingMs }
+      state = { ...state, remainingMs, elapsedMs: elapsed }
     },
 
     restart(sentence: TypingSentence) {
