@@ -1,0 +1,52 @@
+#!/usr/bin/env node
+/** Regenerates supabase/seed_passages.sql — edit PASSAGES then: node scripts/generate-passages.mjs */
+import { writeFileSync } from 'node:fs'
+
+const PASSAGES = [
+  "Morning light spilled across the quiet office as the team gathered for another day of focused work. Keyboards clicked in a steady rhythm while ideas moved from sticky notes into working software. By noon the hallway smelled of fresh coffee and the whiteboard was covered with arrows and questions. Everyone knew that small improvements stacked together would shape the product they were proud to ship.",
+  "Typing practice rewards patience more than force and rewards attention more than speed alone. When fingers settle into a natural path the mind can stay on meaning instead of hunting for keys. Accuracy protects every later burst of pace because corrections cost more than careful first strokes. Over weeks the same drills become almost musical and progress shows up without drama.",
+  "The Kathmandu evening cooled quickly after the monsoon clouds drifted east. Street lamps reflected in shallow puddles while scooters threaded between shops still open late. Friends met under a canopy to compare scores from the daily typing board and laugh about near misses. Competition stayed friendly because the real prize was shared improvement across the whole company.",
+  "A long sentence bank keeps practice honest by refusing to let muscle memory memorize one paragraph. Varied vocabulary stretches the hands into uncommon letter pairs and punctuation habits. Three or four connected sentences create a flow that feels closer to real writing than isolated words. That realism is what transfers into email chats documents and code comments later.",
+  "Designers and engineers often argue about polish versus shipping yet both need clear communication. A typing arena built for the company is a small cultural tool as much as a game. It surfaces who is present in the moment and invites people to return tomorrow for another attempt. Leaderboards matter less than the habit of showing up and caring about craft.",
+  "Rain tapped the windows while the office heaters hummed against the damp air. Someone restarted a failed run with a quick shortcut and the room barely noticed. Soft laughter rose when a top score flipped for the thirty second mode late in the afternoon. The sound of focused work returned almost immediately because the next challenge was already waiting.",
+  "Shortcuts should feel invisible once they become muscle memory the way they do on Monkeytype. Tab followed by Enter confirms a restart so accidents do not wipe a good run. Escape can pull focus or signal cancel depending on context and players learn the pattern quickly. Consistency between keyboard and on screen hints builds trust in the interface.",
+  "Finish the passage early and the timer should stop because the work is done. Scoring then uses the time you actually spent not the unused seconds on the clock. That rule rewards clean completion without forcing people to keep typing filler after the text ends. It also mirrors how quote modes feel on familiar public typing sites.",
+  "Live statistics during a run help players adjust without breaking concentration. A calm caret marks the next character while completed letters show correct or incorrect states. Upcoming text stays dim enough to guide the eye without shouting for attention. The whole composition should feel like one quiet instrument panel around the words.",
+  "Company jargon can sneak into custom sentences when admins expand the bank later. Until then general English passages with full stops and commas train everyday fluency. Long lines wrap carefully so mobile screens remain readable without losing the centered stage. Dohoro branding sits lightly around the arena rather than competing with the text.",
+  "After a completed attempt the results should appear with the same restraint as the run itself. Large WPM and accuracy numbers are enough without packing the first viewport with extra cards. A short line explains whether the daily best moved and invites another try. Restarting should be one familiar gesture away so momentum never dies.",
+  "Some afternoons the board stays empty until the first finisher of the day appears. That emptiness is intentional because it celebrates participation instead of padding ranks. When Realtime updates land they should only fire for improved daily bests. Noise free updates keep the scoreboard feeling like a live race instead of a flickering log.",
+  "Backspace is part of honest practice and should reverse the last keystroke cleanly. Players who panic delete whole words will see accuracy drop and learn to slow down. The engine must ignore modifier combinations that belong to the browser or the operating system. Only intentional printable input advances the caret through the passage.",
+  "Duration tabs for fifteen thirty and sixty seconds remain the competitive frames. Choosing a duration mid run should be blocked so a result stays comparable. Shared tabs between the arena and the scoreboard keep the shell coherent. Switching duration after a finish simply loads a new passage for the next attempt.",
+  "Admins maintain the sentence bank so content can grow without a deploy. Inactive rows stay out of rotation while active rows feed random picks. Seeding a thousand words of multi sentence passages gives depth on day one. Future edits can replace weak lines without touching player history.",
+  "Focus management is easy to get wrong and painful when it fails. Clicking the text area should restore keyboard capture without a visible form field. A gentle underline or blinking caret communicates readiness better than a loud border. When focus is lost a subtle prompt can ask the player to click and continue.",
+  "Typography carries the personality of a typing product more than any illustration. A monospace face for the passage keeps character widths honest for the caret. Supporting labels can use a quieter sans so hierarchy stays clear. Color should separate correct incorrect and upcoming states without neon excess.",
+  "Night themes dominate many typing tools and Dohoro Type follows that familiar stage. Deep charcoal backgrounds reduce glare during long practice sessions after work. Accent color belongs to the caret and the active duration control. Everything else stays secondary so the sentence remains the hero of the screen.",
+  "Employees join by allowlisted email because the roster is company managed. Avatars and usernames travel with every scoreboard row so faces stay human. Admin tools remain behind a flag so everyday players are not distracted. The login screen stays minimal because the product is the practice not the account ceremony.",
+  "Tomorrow the same people will return and chase a cleaner accuracy line. Some will chase raw speed and learn the cost of reckless errors. Others will treat the arena like a warm up before deep work. Either way the shared board turns private practice into a quiet team ritual."
+]
+
+function wordCount(s) {
+  return s.trim().split(/\s+/).filter(Boolean).length
+}
+
+const total = PASSAGES.reduce((n, p) => n + wordCount(p), 0)
+const lines = [
+  '-- Bulk passages (~' + total + ' words). Safe to re-run (skips duplicate text).',
+  '-- Run in Supabase SQL Editor after schema exists.',
+  '',
+  'insert into public.sentences (text, is_active)',
+  'select v.body, true',
+  'from (',
+  '  values',
+]
+PASSAGES.forEach((p, i) => {
+  const comma = i < PASSAGES.length - 1 ? ',' : ''
+  lines.push('    ($$' + p.replace(/\$/g, '') + '$$)' + comma)
+})
+lines.push(') as v(body)')
+lines.push('where not exists (')
+lines.push('  select 1 from public.sentences existing where existing.text = v.body')
+lines.push(');')
+lines.push('')
+writeFileSync('supabase/seed_passages.sql', lines.join('\n'))
+console.log('Wrote supabase/seed_passages.sql —', PASSAGES.length, 'passages,', total, 'words')
