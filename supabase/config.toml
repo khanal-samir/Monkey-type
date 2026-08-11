@@ -1,0 +1,11 @@
+project_id = "dohoro-type"
+
+[api]
+enabled = true
+
+[db]
+major_version = 15
+
+[db.seed]
+enabled = true
+sql_paths = ['./seed.sql']
