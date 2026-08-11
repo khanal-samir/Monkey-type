@@ -74,4 +74,21 @@ describe('TypingEngine', () => {
     ])
     expect(caretIndex).toBe(2)
   })
+
+  it('honors timerMs override without changing scored durationSec', () => {
+    const engine = createTypingEngine({
+      durationSec: 15,
+      sentence,
+      timerMs: 2_500,
+      nowMs: () => 0,
+    })
+
+    expect(engine.getState().remainingMs).toBe(2_500)
+    engine.inputChar('h', 0)
+    engine.tick(2_500)
+    const state = engine.getState()
+    expect(state.status).toBe('completed')
+    expect(state.result?.durationSec).toBe(15)
+  })
+
 })

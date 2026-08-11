@@ -48,6 +48,12 @@ export type TypingEngineOptions = {
   durationSec: DurationSec
   sentence: TypingSentence
   nowMs?: () => number
+  /**
+   * Wall-clock length of the timed run in ms.
+   * Defaults to durationSec * 1000. E2E short timer overrides this without
+   * changing the scored/persisted durationSec.
+   */
+  timerMs?: number
 }
 
 export type TypingEngine = {
@@ -59,9 +65,20 @@ export type TypingEngine = {
   setDuration: (durationSec: DurationSec) => void
 }
 
+function resolveTimerMs(durationSec: DurationSec, timerMs?: number): number {
+  if (timerMs !== undefined) {
+    if (!Number.isFinite(timerMs) || timerMs <= 0) {
+      throw new Error('timerMs must be a positive number.')
+    }
+    return timerMs
+  }
+  return durationSec * 1000
+}
+
 function buildIdleState(
   durationSec: DurationSec,
   sentence: TypingSentence,
+  timerMs: number,
 ): TypingEngineState {
   return {
     status: 'idle',
@@ -71,14 +88,15 @@ function buildIdleState(
     caretIndex: 0,
     typed: '',
     events: [],
-    remainingMs: durationSec * 1000,
+    remainingMs: timerMs,
     result: null,
   }
 }
 
 export function createTypingEngine(options: TypingEngineOptions): TypingEngine {
   const nowMs = options.nowMs ?? (() => Date.now())
-  let state = buildIdleState(options.durationSec, options.sentence)
+  let timerMs = resolveTimerMs(options.durationSec, options.timerMs)
+  let state = buildIdleState(options.durationSec, options.sentence, timerMs)
   let startedAtMs: number | null = null
 
   function snapshot(): TypingEngineState {
@@ -111,6 +129,11 @@ export function createTypingEngine(options: TypingEngineOptions): TypingEngine {
       remainingMs: 0,
       result,
     }
+  }
+
+  function resetIdle(sentence: TypingSentence, durationSec: DurationSec) {
+    startedAtMs = null
+    state = buildIdleState(durationSec, sentence, timerMs)
   }
 
   return {
@@ -166,7 +189,7 @@ export function createTypingEngine(options: TypingEngineOptions): TypingEngine {
 
       const now = explicitNow ?? nowMs()
       const elapsed = Math.max(0, now - startedAtMs)
-      const totalMs = state.durationSec * 1000
+      const totalMs = timerMs
       const remainingMs = Math.max(0, totalMs - elapsed)
 
       if (remainingMs === 0) {
@@ -178,17 +201,19 @@ export function createTypingEngine(options: TypingEngineOptions): TypingEngine {
     },
 
     restart(sentence: TypingSentence) {
-      startedAtMs = null
-      state = buildIdleState(state.durationSec, sentence)
+      resetIdle(sentence, state.durationSec)
     },
 
     setDuration(durationSec: DurationSec) {
       if (state.status === 'running') return
-      startedAtMs = null
-      state = buildIdleState(durationSec, {
-        id: state.sentenceId,
-        text: state.sentenceText,
-      })
+      timerMs = resolveTimerMs(durationSec, options.timerMs)
+      resetIdle(
+        {
+          id: state.sentenceId,
+          text: state.sentenceText,
+        },
+        durationSec,
+      )
     },
   }
 }

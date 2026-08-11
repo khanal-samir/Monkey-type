@@ -3,6 +3,7 @@ import { useServerFn } from '@tanstack/react-start'
 import { pickActiveSentence } from '#/server/sentences'
 import { submitAttempt } from '#/server/rankings'
 import { scoreAttempt } from '#/domain/scoring'
+import { E2E_SHORT_TIMER_MS, isE2eShortTimer } from '#/lib/e2e/env'
 import {
   createTypingEngine,
   type CompletedAttempt,
@@ -104,6 +105,7 @@ export function TypingArena({
       const engine = createTypingEngine({
         durationSec: nextDuration,
         sentence,
+        ...(isE2eShortTimer() ? { timerMs: E2E_SHORT_TIMER_MS } : {}),
       })
       engineRef.current = engine
       savedAttemptKeyRef.current = null

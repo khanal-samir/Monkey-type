@@ -1,5 +1,11 @@
 import { createSupabaseClient } from '#/lib/supabase/client'
 import { assertSupabaseConfigured } from '#/lib/users/repo'
+import { isE2eFixtures } from '#/lib/e2e/env'
+import {
+  fixtureCreateSentence,
+  fixtureListSentences,
+  fixtureUpdateSentence,
+} from '#/lib/e2e/fixture-store'
 import { mapSentenceRow } from './map'
 import type { Sentence } from '#/domain/sentence-bank'
 
@@ -7,6 +13,9 @@ export async function listSentences(options?: {
   activeOnly?: boolean
 }): Promise<Sentence[]> {
   assertSupabaseConfigured()
+  if (isE2eFixtures()) {
+    return fixtureListSentences(options)
+  }
   const supabase = createSupabaseClient()
   let query = supabase
     .from('sentences')
@@ -27,6 +36,9 @@ export async function createSentence(input: {
   isActive?: boolean
 }): Promise<Sentence> {
   assertSupabaseConfigured()
+  if (isE2eFixtures()) {
+    return fixtureCreateSentence(input)
+  }
   const supabase = createSupabaseClient()
   const text = input.text.trim()
   if (!text) throw new Error('Sentence text is required.')
@@ -50,6 +62,9 @@ export async function updateSentence(input: {
   isActive?: boolean
 }): Promise<Sentence> {
   assertSupabaseConfigured()
+  if (isE2eFixtures()) {
+    return fixtureUpdateSentence(input)
+  }
   const supabase = createSupabaseClient()
 
   const patch: {

@@ -5,6 +5,13 @@ import type { ScoreboardRowInput } from '#/domain/leaderboard'
 import type { DurationSec } from '#/domain/typing-engine'
 import { createSupabaseClient } from '#/lib/supabase/client'
 import { assertSupabaseConfigured } from '#/lib/users/repo'
+import { isE2eFixtures } from '#/lib/e2e/env'
+import {
+  fixtureFindDailyBest,
+  fixtureInsertAttempt,
+  fixtureListTodaysScoreboardRows,
+  fixtureWriteDailyBest,
+} from '#/lib/e2e/fixture-store'
 
 type AttemptRow = Database['public']['Tables']['attempts']['Row']
 type DailyBestRow = Database['public']['Tables']['daily_bests']['Row']
@@ -13,6 +20,9 @@ export async function insertAttempt(
   input: AttemptInsert,
 ): Promise<{ id: string }> {
   assertSupabaseConfigured()
+  if (isE2eFixtures()) {
+    return fixtureInsertAttempt(input)
+  }
   const supabase = createSupabaseClient()
   const { data, error } = await supabase
     .from('attempts')
@@ -35,6 +45,9 @@ export async function findDailyBest(key: {
   localDate: string
 }): Promise<{ wpm: number } | null> {
   assertSupabaseConfigured()
+  if (isE2eFixtures()) {
+    return fixtureFindDailyBest(key)
+  }
   const supabase = createSupabaseClient()
   const { data, error } = await supabase
     .from('daily_bests')
@@ -51,6 +64,9 @@ export async function findDailyBest(key: {
 
 export async function writeDailyBest(record: DailyBestRecord): Promise<void> {
   assertSupabaseConfigured()
+  if (isE2eFixtures()) {
+    return fixtureWriteDailyBest(record)
+  }
   const supabase = createSupabaseClient()
   const { error } = await supabase.from('daily_bests').upsert(
     {
@@ -73,6 +89,9 @@ export async function listTodaysScoreboardRows(input: {
   localDate: string
 }): Promise<ScoreboardRowInput[]> {
   assertSupabaseConfigured()
+  if (isE2eFixtures()) {
+    return fixtureListTodaysScoreboardRows(input)
+  }
   const supabase = createSupabaseClient()
   const { data, error } = await supabase
     .from('daily_bests')

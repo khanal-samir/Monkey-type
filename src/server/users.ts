@@ -3,14 +3,20 @@ import { login } from '#/domain/auth'
 import { requireAdmin, requireExistingUser } from '#/domain/access'
 import { resolveUsername } from '#/domain/username'
 import { resolveAvatar } from '#/domain/avatar'
+import { isE2eFixtures } from '#/lib/e2e/env'
+import {
+  fixtureCreateUser,
+  fixtureListUsers,
+  fixtureUpdateUser,
+} from '#/lib/e2e/fixture-store'
 import {
   assertSupabaseConfigured,
   findUserByEmail,
   findUserById,
   getUsersClient,
+  isDataBackendReady,
 } from '#/lib/users/repo'
 import { mapUserRow } from '#/lib/users/map'
-import { isSupabaseConfigured } from '#/lib/supabase/client'
 import type { SessionUser } from '#/domain/auth'
 
 function accessDeps() {
@@ -22,7 +28,7 @@ export const loginByEmail = createServerFn({ method: 'POST' })
   .handler(async ({ data }): Promise<
     { ok: true; user: SessionUser } | { ok: false; error: string }
   > => {
-    if (!isSupabaseConfigured()) {
+    if (!isDataBackendReady()) {
       return {
         ok: false,
         error:
@@ -47,6 +53,10 @@ export const listUsers = createServerFn({ method: 'POST' })
     assertSupabaseConfigured()
     await requireAdmin(data.adminUserId, accessDeps())
 
+    if (isE2eFixtures()) {
+      return { users: await fixtureListUsers() }
+    }
+
     const supabase = getUsersClient()
     const { data: rows, error } = await supabase
       .from('users')
@@ -70,6 +80,16 @@ export const createUser = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     assertSupabaseConfigured()
     await requireAdmin(data.adminUserId, accessDeps())
+
+    if (isE2eFixtures()) {
+      const user = await fixtureCreateUser({
+        email: data.email,
+        username: data.username,
+        avatarUrl: data.avatarUrl,
+        isAdmin: data.isAdmin,
+      })
+      return { user }
+    }
 
     const email = data.email.trim().toLowerCase()
     if (!email) {
@@ -117,6 +137,16 @@ export const updateUser = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     assertSupabaseConfigured()
     await requireAdmin(data.adminUserId, accessDeps())
+
+    if (isE2eFixtures()) {
+      const user = await fixtureUpdateUser({
+        userId: data.userId,
+        username: data.username,
+        avatarUrl: data.avatarUrl,
+        isAdmin: data.isAdmin,
+      })
+      return { user }
+    }
 
     const patch: {
       username?: string

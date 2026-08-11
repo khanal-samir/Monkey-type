@@ -3,9 +3,7 @@
 Company-only Monkeytype-style typing app for Dohoro employees.
 
 Parent PRD: [issue #1](https://github.com/khanal-samir/Dohoro-type/issues/1)  
-Foundation slice: [issue #2](https://github.com/khanal-samir/Dohoro-type/issues/2)  
-Identity slice: [issue #3](https://github.com/khanal-samir/Dohoro-type/issues/3)  
-Typing slice: [issue #4](https://github.com/khanal-samir/Dohoro-type/issues/4)
+Slices: [#2](https://github.com/khanal-samir/Dohoro-type/issues/2) · [#3](https://github.com/khanal-samir/Dohoro-type/issues/3) · [#4](https://github.com/khanal-samir/Dohoro-type/issues/4) · [#5](https://github.com/khanal-samir/Dohoro-type/issues/5) · [#6](https://github.com/khanal-samir/Dohoro-type/issues/6)
 
 ## Stack
 
@@ -13,14 +11,14 @@ Typing slice: [issue #4](https://github.com/khanal-samir/Dohoro-type/issues/4)
 - **Supabase** — Postgres + Realtime (no Supabase Auth)
 - **Zustand** + localStorage — allowlist email session
 - **Vitest** — domain unit tests
-- **Playwright** — E2E smoke / acceptance
+- **Playwright** — E2E acceptance (fixture-backed, no live Supabase required)
 
 ## Setup
 
 ```bash
 pnpm install
 cp .env.example .env
-# Fill VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY from your Supabase project
+# For real data/Realtime: fill VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
 ```
 
 ### Database
@@ -44,8 +42,8 @@ npx supabase db reset   # applies migrations + seed from config.toml
 | Command | Purpose |
 |---------|---------|
 | `pnpm dev` | Dev server at http://localhost:3000 |
-| `pnpm test` | Vitest (domain) |
-| `pnpm test:e2e` | Playwright (starts dev server) |
+| `pnpm test` | Vitest (domain + fixture store) |
+| `pnpm test:e2e` | Playwright acceptance (starts fixtures-backed dev server) |
 | `pnpm build` | Production build |
 | `pnpm lint` | ESLint |
 
@@ -55,31 +53,44 @@ First Playwright run may need browsers:
 pnpm exec playwright install chromium
 ```
 
-## Try typing
+### E2E without Supabase
+
+`pnpm test:e2e` sets:
+
+| Env | Effect |
+|-----|--------|
+| `VITE_E2E_FIXTURES=1` | In-memory users / sentences / attempts / daily bests (seeded admin + short sentence) |
+| `VITE_E2E_SHORT_TIMER=1` | Wall-clock timer ≈2.5s while scored duration stays 15 / 30 / 60 |
+
+You do **not** need a live Supabase project for acceptance. Specs cover login fail/success, a completed run → daily best on the scoreboard, and admin create-user → new login.
+
+To manually demo fixtures:
+
+```bash
+VITE_E2E_FIXTURES=1 VITE_E2E_SHORT_TIMER=1 pnpm dev
+# Sign in as samir1.dohoro@gmail.com
+```
+
+## Try typing (Supabase)
 
 1. Apply migration + seed, fill `.env`.
 2. `pnpm dev` → sign in as `samir1.dohoro@gmail.com`.
 3. On `/`: pick 15 / 30 / 60, type the sentence; Tab / Escape / Restart discards incomplete runs.
-4. On timer end, WPM + accuracy show (persistence is issue #5).
-5. Admin: **Sentences** (`/admin/sentences`) to add/edit/activate; inactive never picked.
-
-## Try identity
-
-1. Apply migration + seed, fill `.env`.
-2. `pnpm dev` → http://localhost:3000/login
-3. Sign in as `samir1.dohoro@gmail.com` (session persists in localStorage).
-4. Open **Users** to create allowlisted employees (optional username / avatar URL; blank avatar → DiceBear).
+4. On timer end, WPM + accuracy save; daily best appears on Today's scoreboard.
+5. Admin: **Users** / **Sentences**.
 
 ## Project layout
 
 ```
 src/
-  domain/           # Pure modules (auth, sentence-bank, typing-engine, scoring, …)
-  components/       # TypingArena UI
+  domain/           # Pure modules (auth, scoring, daily-best, typing-engine, …)
+  components/       # TypingArena, Scoreboard, DurationTabs
+  lib/e2e/          # Fixture store + E2E env flags
   lib/supabase/     # Client + Database types
-  lib/users/        # User row mapping + lookups
-  lib/sentences/    # Sentence row mapping + CRUD
-  server/           # Server functions (users + sentences)
+  lib/users/        # User lookups (Supabase or fixtures)
+  lib/sentences/    # Sentence CRUD
+  lib/rankings/     # Attempts + daily bests
+  server/           # Server functions
   session/          # Zustand + localStorage session
   routes/           # /login, /, /admin/users, /admin/sentences
 supabase/
@@ -99,3 +110,5 @@ Use TDD: one failing Vitest/Playwright assertion → minimal code → next behav
 |------|-------------|
 | `VITE_SUPABASE_URL` | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anon/public key |
+| `VITE_E2E_FIXTURES` | `1` = in-memory backend for demos/Playwright |
+| `VITE_E2E_SHORT_TIMER` | `1` = ~2.5s wall timer (production defaults unchanged) |

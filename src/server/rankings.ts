@@ -5,14 +5,17 @@ import { rankScoreboard } from '#/domain/leaderboard'
 import { persistCompletedAttempt } from '#/domain/persist-attempt'
 import type { DurationSec } from '#/domain/typing-engine'
 import { TYPING_DURATIONS } from '#/domain/typing-engine'
-import { isSupabaseConfigured } from '#/lib/supabase/client'
 import {
   findDailyBest,
   insertAttempt,
   listTodaysScoreboardRows,
   writeDailyBest,
 } from '#/lib/rankings/repo'
-import { assertSupabaseConfigured, findUserById } from '#/lib/users/repo'
+import {
+  assertSupabaseConfigured,
+  findUserById,
+  isDataBackendReady,
+} from '#/lib/users/repo'
 
 function accessDeps() {
   return { findUserById }
@@ -65,7 +68,7 @@ export const submitAttempt = createServerFn({ method: 'POST' })
 export const getTodaysScoreboard = createServerFn({ method: 'POST' })
   .validator((data: { userId: string; durationSec: number }) => data)
   .handler(async ({ data }) => {
-    if (!isSupabaseConfigured()) {
+    if (!isDataBackendReady()) {
       return { entries: [], localDate: localDateInTimezone(new Date()) }
     }
 

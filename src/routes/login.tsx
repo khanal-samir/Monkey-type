@@ -45,6 +45,14 @@ function LoginPage() {
     }
   }
 
+  if (!hydrated) {
+    return (
+      <main className="app-shell mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 p-8">
+        <p className="text-[var(--muted)]">Loading…</p>
+      </main>
+    )
+  }
+
   return (
     <main className="app-shell mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 p-8">
       <div>
@@ -64,7 +72,11 @@ function LoginPage() {
         </p>
       </div>
 
-      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <form
+        onSubmit={onSubmit}
+        className="flex flex-col gap-4"
+        data-testid="login-form"
+      >
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-[var(--fg)]">Email</span>
           <input
