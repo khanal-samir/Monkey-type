@@ -61,8 +61,8 @@ function AdminUsersPage() {
 
   if (!hydrated || !user?.isAdmin) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center p-8">
-        <p className="text-neutral-500">Loading…</p>
+      <main className="admin-page mx-auto flex min-h-screen max-w-3xl items-center p-8">
+        <p className="text-[var(--muted)]">Loading…</p>
       </main>
     )
   }
@@ -113,16 +113,25 @@ function AdminUsersPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 p-8">
+    <main className="admin-page mx-auto flex min-h-screen max-w-3xl flex-col gap-8 p-8">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-[var(--muted)]">
             <Link to="/" className="underline-offset-2 hover:underline">
               ← Dohoro Type
             </Link>
+            {' · '}
+            <Link
+              to="/admin/sentences"
+              className="underline-offset-2 hover:underline"
+            >
+              Sentences
+            </Link>
           </p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">Users</h1>
-          <p className="text-sm text-neutral-600">
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-[var(--fg)]">
+            Users
+          </h1>
+          <p className="text-sm text-[var(--muted)]">
             Allowlist employees. Username defaults from email; avatar uploads as
             URL or auto-generates.
           </p>
@@ -130,46 +139,46 @@ function AdminUsersPage() {
       </header>
 
       {loadError ? (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-[var(--error)]">
           {loadError}
         </p>
       ) : null}
 
       <section>
-        <h2 className="text-lg font-semibold">Add user</h2>
+        <h2 className="text-lg font-semibold text-[var(--fg)]">Add user</h2>
         <form onSubmit={onCreate} className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-            <span className="font-medium">Email (required)</span>
+            <span className="font-medium text-[var(--fg)]">Email (required)</span>
             <input
               type="email"
               required
               value={email}
               onChange={(ev) => setEmail(ev.target.value)}
-              className="rounded border border-neutral-300 px-3 py-2 outline-none focus:border-neutral-800"
+              className="admin-input rounded border px-3 py-2 outline-none"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium">Username (optional)</span>
+            <span className="font-medium text-[var(--fg)]">Username (optional)</span>
             <input
               type="text"
               value={username}
               onChange={(ev) => setUsername(ev.target.value)}
-              className="rounded border border-neutral-300 px-3 py-2 outline-none focus:border-neutral-800"
+              className="admin-input rounded border px-3 py-2 outline-none"
               placeholder="Defaults from email"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium">Avatar URL (optional)</span>
+            <span className="font-medium text-[var(--fg)]">Avatar URL (optional)</span>
             <input
               type="url"
               value={avatarUrl}
               onChange={(ev) => setAvatarUrl(ev.target.value)}
-              className="rounded border border-neutral-300 px-3 py-2 outline-none focus:border-neutral-800"
+              className="admin-input rounded border px-3 py-2 outline-none"
               placeholder="Leave blank to generate"
             />
           </label>
           {formError ? (
-            <p role="alert" className="text-sm text-red-700 sm:col-span-2">
+            <p role="alert" className="text-sm text-[var(--error)] sm:col-span-2">
               {formError}
             </p>
           ) : null}
@@ -177,7 +186,7 @@ function AdminUsersPage() {
             <button
               type="submit"
               disabled={pending}
-              className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+              className="admin-primary rounded px-4 py-2 text-sm font-medium disabled:opacity-60"
             >
               {pending ? 'Saving…' : 'Create user'}
             </button>
@@ -186,10 +195,15 @@ function AdminUsersPage() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold">Roster ({users.length})</h2>
-        <ul className="mt-3 divide-y divide-neutral-200 border-y border-neutral-200">
+        <h2 className="text-lg font-semibold text-[var(--fg)]">
+          Roster ({users.length})
+        </h2>
+        <ul className="admin-list mt-3 divide-y border-y">
           {users.map((u) => (
-            <li key={u.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
+            <li
+              key={u.id}
+              className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between"
+            >
               <div className="flex items-center gap-3">
                 {u.avatarUrl ? (
                   <img
@@ -197,23 +211,23 @@ function AdminUsersPage() {
                     alt=""
                     width={40}
                     height={40}
-                    className="h-10 w-10 rounded-full bg-neutral-100"
+                    className="h-10 w-10 rounded-full bg-[var(--surface)]"
                   />
                 ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-200 text-sm font-semibold">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface)] text-sm font-semibold text-[var(--fg)]">
                     {u.username.slice(0, 1).toUpperCase()}
                   </div>
                 )}
                 <div>
-                  <p className="font-medium">
+                  <p className="font-medium text-[var(--fg)]">
                     {u.username}
                     {u.isAdmin ? (
-                      <span className="ml-2 text-xs font-normal uppercase tracking-wide text-neutral-500">
+                      <span className="ml-2 text-xs font-normal uppercase tracking-wide text-[var(--muted)]">
                         admin
                       </span>
                     ) : null}
                   </p>
-                  <p className="text-sm text-neutral-600">{u.email}</p>
+                  <p className="text-sm text-[var(--muted)]">{u.email}</p>
                 </div>
               </div>
 
@@ -223,14 +237,14 @@ function AdminUsersPage() {
                     type="text"
                     value={editUsername}
                     onChange={(ev) => setEditUsername(ev.target.value)}
-                    className="rounded border border-neutral-300 px-2 py-1.5 text-sm"
+                    className="admin-input rounded border px-2 py-1.5 text-sm"
                     placeholder="Username"
                   />
                   <input
                     type="url"
                     value={editAvatarUrl}
                     onChange={(ev) => setEditAvatarUrl(ev.target.value)}
-                    className="rounded border border-neutral-300 px-2 py-1.5 text-sm"
+                    className="admin-input rounded border px-2 py-1.5 text-sm"
                     placeholder="Avatar URL"
                   />
                   <div className="flex gap-2">
@@ -238,14 +252,14 @@ function AdminUsersPage() {
                       type="button"
                       disabled={pending}
                       onClick={() => void onSaveEdit(u)}
-                      className="rounded bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white"
+                      className="admin-primary rounded px-3 py-1.5 text-xs font-medium"
                     >
                       Save
                     </button>
                     <button
                       type="button"
                       onClick={() => setEditingId(null)}
-                      className="rounded border border-neutral-300 px-3 py-1.5 text-xs"
+                      className="admin-ghost rounded border px-3 py-1.5 text-xs"
                     >
                       Cancel
                     </button>
@@ -259,7 +273,7 @@ function AdminUsersPage() {
                     setEditUsername(u.username)
                     setEditAvatarUrl(u.avatarUrl ?? '')
                   }}
-                  className="self-start rounded border border-neutral-300 px-3 py-1.5 text-xs hover:bg-neutral-50"
+                  className="admin-ghost self-start rounded border px-3 py-1.5 text-xs"
                 >
                   Edit
                 </button>

@@ -4,7 +4,8 @@ Company-only Monkeytype-style typing app for Dohoro employees.
 
 Parent PRD: [issue #1](https://github.com/khanal-samir/Dohoro-type/issues/1)  
 Foundation slice: [issue #2](https://github.com/khanal-samir/Dohoro-type/issues/2)  
-Identity slice: [issue #3](https://github.com/khanal-samir/Dohoro-type/issues/3)
+Identity slice: [issue #3](https://github.com/khanal-samir/Dohoro-type/issues/3)  
+Typing slice: [issue #4](https://github.com/khanal-samir/Dohoro-type/issues/4)
 
 ## Stack
 
@@ -54,23 +55,33 @@ First Playwright run may need browsers:
 pnpm exec playwright install chromium
 ```
 
+## Try typing
+
+1. Apply migration + seed, fill `.env`.
+2. `pnpm dev` → sign in as `samir1.dohoro@gmail.com`.
+3. On `/`: pick 15 / 30 / 60, type the sentence; Tab / Escape / Restart discards incomplete runs.
+4. On timer end, WPM + accuracy show (persistence is issue #5).
+5. Admin: **Sentences** (`/admin/sentences`) to add/edit/activate; inactive never picked.
+
 ## Try identity
 
 1. Apply migration + seed, fill `.env`.
 2. `pnpm dev` → http://localhost:3000/login
 3. Sign in as `samir1.dohoro@gmail.com` (session persists in localStorage).
-4. Open **Manage users** to create allowlisted employees (optional username / avatar URL; blank avatar → DiceBear).
+4. Open **Users** to create allowlisted employees (optional username / avatar URL; blank avatar → DiceBear).
 
 ## Project layout
 
 ```
 src/
-  domain/           # Pure modules (auth, username, avatar, access) — TDD first
+  domain/           # Pure modules (auth, sentence-bank, typing-engine, scoring, …)
+  components/       # TypingArena UI
   lib/supabase/     # Client + Database types
-  lib/users/        # Row mapping + Supabase lookups
-  server/           # TanStack Start server functions (login + admin CRUD)
+  lib/users/        # User row mapping + lookups
+  lib/sentences/    # Sentence row mapping + CRUD
+  server/           # Server functions (users + sentences)
   session/          # Zustand + localStorage session
-  routes/           # /login, /, /admin/users
+  routes/           # /login, /, /admin/users, /admin/sentences
 supabase/
   migrations/       # SQL schema
   seed.sql          # Admin + sentences

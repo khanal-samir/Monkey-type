@@ -1,5 +1,22 @@
-
 @import "tailwindcss";
+
+:root {
+  --bg: #1a1b1e;
+  --bg-accent: #222328;
+  --surface: #2c2e33;
+  --fg: #e2e4e9;
+  --muted: #6b7280;
+  --upcoming: #5c6370;
+  --correct: #d1d5db;
+  --incorrect: #e06c75;
+  --caret: #e2b714;
+  --accent: #e2b714;
+  --error: #e06c75;
+  --border: #3a3d45;
+  --brand: #f0f1f4;
+  --font-display: "Sora", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
 
 * {
   box-sizing: border-box;
@@ -13,5 +30,154 @@ body,
 
 body {
   margin: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, #2a2c34 0%, transparent 55%),
+    var(--bg);
+  color: var(--fg);
+  font-family: var(--font-display);
 }
 
+.app-shell,
+.admin-page {
+  color: var(--fg);
+}
+
+.brand-mark {
+  font-family: var(--font-display);
+  color: var(--brand);
+  letter-spacing: -0.03em;
+}
+
+.duration-tabs {
+  background: var(--surface);
+}
+
+.duration-tab {
+  color: var(--muted);
+}
+
+.duration-tab:hover {
+  color: var(--fg);
+}
+
+.duration-tab-active {
+  background: var(--bg);
+  color: var(--accent);
+}
+
+.timer-display {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  min-height: 2rem;
+}
+
+.typing-text {
+  font-family: var(--font-mono);
+  word-break: break-word;
+}
+
+.typing-upcoming {
+  color: var(--upcoming);
+}
+
+.typing-correct {
+  color: var(--correct);
+}
+
+.typing-incorrect {
+  color: var(--incorrect);
+  text-decoration: underline;
+  text-decoration-color: var(--incorrect);
+}
+
+.typing-caret {
+  color: var(--upcoming);
+  border-left: 2px solid var(--caret);
+  margin-left: -2px;
+  animation: caret-blink 1s steps(1) infinite;
+}
+
+@keyframes caret-blink {
+  0%,
+  49% {
+    border-left-color: var(--caret);
+  }
+  50%,
+  100% {
+    border-left-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing-caret {
+    animation: none;
+    border-left-color: var(--caret);
+  }
+}
+
+.typing-muted,
+.typing-hint {
+  color: var(--muted);
+}
+
+.restart-btn {
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--border);
+}
+
+.restart-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.result-panel {
+  border-top: 1px solid var(--border);
+  padding-top: 1.5rem;
+}
+
+.result-label {
+  color: var(--muted);
+}
+
+.result-value {
+  color: var(--accent);
+}
+
+.admin-input {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--fg);
+}
+
+.admin-input:focus {
+  border-color: var(--accent);
+}
+
+.admin-primary {
+  background: var(--accent);
+  color: #1a1b1e;
+}
+
+.admin-ghost {
+  border-color: var(--border);
+  color: var(--fg);
+  background: transparent;
+}
+
+.admin-ghost:hover {
+  background: var(--surface);
+}
+
+.admin-list {
+  border-color: var(--border);
+}
+
+.admin-list > li {
+  border-color: var(--border);
+}
+
+.typing-focus:focus-visible {
+  outline: 1px dashed var(--border);
+  outline-offset: 8px;
+}

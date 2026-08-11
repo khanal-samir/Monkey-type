@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { isSupabaseConfigured } from '#/lib/supabase/client'
+import { TypingArena } from '#/components/typing-arena'
 import { useSessionStore } from '#/session/store'
 import { useSessionHydrated } from '#/session/use-session-hydrated'
 
@@ -11,7 +11,6 @@ function Home() {
   const hydrated = useSessionHydrated()
   const user = useSessionStore((s) => s.user)
   const clearSession = useSessionStore((s) => s.clearSession)
-  const supabaseReady = isSupabaseConfigured()
 
   useEffect(() => {
     if (hydrated && !user) {
@@ -21,8 +20,8 @@ function Home() {
 
   if (!hydrated || !user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-2xl items-center p-8">
-        <p className="text-neutral-500">
+      <main className="app-shell mx-auto flex min-h-screen max-w-4xl items-center justify-center p-8">
+        <p className="typing-muted">
           {!hydrated ? 'Loading session…' : 'Redirecting to login…'}
         </p>
       </main>
@@ -30,65 +29,63 @@ function Home() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-8">
+    <main className="app-shell mx-auto flex min-h-screen max-w-4xl flex-col gap-10 px-6 py-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dohoro Type</h1>
-          <p className="text-sm text-neutral-600">Identity slice — typing comes next.</p>
+        <div className="flex items-center gap-3">
+          <Link to="/" className="brand-mark text-2xl font-semibold tracking-tight">
+            Dohoro Type
+          </Link>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            clearSession()
-            void navigate({ to: '/login' })
-          }}
-          className="rounded border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
-        >
-          Log out
-        </button>
+
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            {user.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt=""
+                width={32}
+                height={32}
+                className="h-8 w-8 rounded-full bg-[var(--surface)]"
+              />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--surface)] text-sm font-semibold text-[var(--fg)]">
+                {user.username.slice(0, 1).toUpperCase()}
+              </div>
+            )}
+            <span className="text-sm text-[var(--fg)]">{user.username}</span>
+          </div>
+
+          {user.isAdmin ? (
+            <div className="flex gap-3 text-sm text-[var(--muted)]">
+              <Link
+                to="/admin/users"
+                className="underline-offset-2 hover:text-[var(--fg)] hover:underline"
+              >
+                Users
+              </Link>
+              <Link
+                to="/admin/sentences"
+                className="underline-offset-2 hover:text-[var(--fg)] hover:underline"
+              >
+                Sentences
+              </Link>
+            </div>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => {
+              clearSession()
+              void navigate({ to: '/login' })
+            }}
+            className="admin-ghost rounded border px-3 py-1.5 text-sm"
+          >
+            Log out
+          </button>
+        </div>
       </header>
 
-      <section className="flex items-center gap-4">
-        {user.avatarUrl ? (
-          <img
-            src={user.avatarUrl}
-            alt=""
-            width={56}
-            height={56}
-            className="h-14 w-14 rounded-full bg-neutral-100"
-          />
-        ) : (
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-neutral-200 text-lg font-semibold">
-            {user.username.slice(0, 1).toUpperCase()}
-          </div>
-        )}
-        <div>
-          <p className="text-lg font-semibold">{user.username}</p>
-          <p className="text-sm text-neutral-600">{user.email}</p>
-          {user.isAdmin ? (
-            <p className="mt-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
-              Admin
-            </p>
-          ) : null}
-        </div>
-      </section>
-
-      <ul className="list-inside list-disc space-y-1 text-sm text-neutral-700">
-        <li>
-          Supabase env:{' '}
-          {supabaseReady ? 'configured' : 'missing (.env from .env.example)'}
-        </li>
-        {user.isAdmin ? (
-          <li>
-            <Link
-              to="/admin/users"
-              className="font-medium text-neutral-900 underline-offset-2 hover:underline"
-            >
-              Manage users
-            </Link>
-          </li>
-        ) : null}
-      </ul>
+      <TypingArena userId={user.id} />
     </main>
   )
 }
