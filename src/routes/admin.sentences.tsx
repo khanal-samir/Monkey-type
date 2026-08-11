@@ -143,7 +143,7 @@ function AdminSentencesPage() {
         <div>
           <p className="text-sm text-[var(--muted)]">
             <Link to="/" className="underline-offset-2 hover:underline">
-              ← Dohoro Type
+              ← Monkey Type
             </Link>
             {' · '}
             <Link

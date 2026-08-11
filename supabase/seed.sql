@@ -1,4 +1,5 @@
--- Seed admin + starter sentences (idempotent-ish via ON CONFLICT)
+-- Seed admin only. Typing passages come from seed_passages.sql (multi-sentence).
+-- Short one-liners are intentionally not seeded as active typing content.
 
 insert into public.users (email, username, avatar_url, is_admin)
 values (
@@ -14,16 +15,9 @@ set
   is_admin = true,
   updated_at = now();
 
-insert into public.sentences (text, is_active)
-select s.text, true
-from (
-  values
-    ('The quick brown fox jumps over the lazy dog near the river bank.'),
-    ('Practice every day and your typing speed will steadily improve.'),
-    ('Dohoro teammates compete fairly on the daily leaderboard.'),
-    ('Clear sentences help everyone focus on accuracy and rhythm.'),
-    ('Small consistent efforts compound into remarkable skill over time.')
-) as s(text)
-where not exists (
-  select 1 from public.sentences existing where existing.text = s.text
-);
+-- Deactivate rows with fewer than 3 sentence terminators (. ! ?) so one-liners
+-- never enter the typing bank.
+update public.sentences
+set is_active = false, updated_at = now()
+where is_active = true
+  and (length(text) - length(translate(text, '.!?', ''))) < 3;

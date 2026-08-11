@@ -38,7 +38,7 @@ function Home() {
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link to="/" className="brand-mark text-2xl font-semibold tracking-tight">
-            Dohoro Type
+            Monkey Type
           </Link>
         </div>
 
@@ -111,6 +111,20 @@ function Home() {
           refreshToken={boardRefresh}
         />
       </div>
+
+      <footer className="mt-auto border-t border-[var(--border)] pt-6 pb-2 text-center">
+        <p className="typing-hint text-sm">
+          Open for more features on GitHub
+        </p>
+        <a
+          href="https://github.com/khanal-samir/Monkey-type"
+          target="_blank"
+          rel="noreferrer"
+          className="mt-1 inline-block text-sm text-[var(--accent)] underline-offset-2 hover:underline"
+        >
+          github.com/khanal-samir/Monkey-type
+        </a>
+      </footer>
     </main>
   )
 }

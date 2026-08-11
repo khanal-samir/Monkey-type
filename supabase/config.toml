@@ -1,4 +1,4 @@
-project_id = "dohoro-type"
+project_id = "monkey-type"
 
 [api]
 enabled = true

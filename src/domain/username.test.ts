@@ -11,6 +11,6 @@ describe('resolveUsername', () => {
   })
 
   it('falls back to the full local-part when there is no dot', () => {
-    expect(resolveUsername('alice@dohoro.com')).toBe('alice')
+    expect(resolveUsername('alice@example.com')).toBe('alice')
   })
 })

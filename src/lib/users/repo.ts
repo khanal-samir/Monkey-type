@@ -1,7 +1,7 @@
 import {
   createSupabaseClient,
   isSupabaseConfigured,
-  type DohoroSupabase,
+  type AppSupabase,
 } from '#/lib/supabase/client'
 import { isE2eFixtures } from '#/lib/e2e/env'
 import {
@@ -26,7 +26,7 @@ export function assertSupabaseConfigured(): void {
   }
 }
 
-export function getUsersClient(): DohoroSupabase {
+export function getUsersClient(): AppSupabase {
   if (isE2eFixtures()) {
     throw new Error(
       'Supabase client is unavailable in E2E fixture mode. Use fixture helpers instead.',

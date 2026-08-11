@@ -1,6 +1,6 @@
 /**
  * Resolve display username: admin override wins, else email local-part before first `.`.
- * e.g. samir1.dohoro@gmail.com → samir1
+ * e.g. samir1.smith@gmail.com → samir1
  */
 export function resolveUsername(
   email: string,

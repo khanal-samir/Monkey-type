@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from './database.types'
 
-export type DohoroSupabase = SupabaseClient<Database>
+export type AppSupabase = SupabaseClient<Database>
 
 export function getSupabaseEnv() {
   const url = import.meta.env.VITE_SUPABASE_URL
@@ -18,9 +18,9 @@ export function isSupabaseConfigured(): boolean {
   return Boolean(url && anonKey)
 }
 
-let browserClient: DohoroSupabase | null = null
+let browserClient: AppSupabase | null = null
 
-export function createSupabaseClient(): DohoroSupabase {
+export function createSupabaseClient(): AppSupabase {
   const { url, anonKey } = getSupabaseEnv()
   if (!url || !anonKey) {
     throw new Error(
@@ -30,7 +30,7 @@ export function createSupabaseClient(): DohoroSupabase {
   return createClient<Database>(url, anonKey)
 }
 
-export function getSupabaseBrowserClient(): DohoroSupabase {
+export function getSupabaseBrowserClient(): AppSupabase {
   if (!browserClient) {
     browserClient = createSupabaseClient()
   }

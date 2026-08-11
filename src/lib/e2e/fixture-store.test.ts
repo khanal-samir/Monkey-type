@@ -22,7 +22,7 @@ describe('E2E fixture store', () => {
 
   it('creates users and records daily bests for the scoreboard', async () => {
     const user = await fixtureCreateUser({
-      email: 'alex.dohoro@gmail.com',
+      email: 'alex@example.com',
     })
     expect(user.username).toBe('alex')
 

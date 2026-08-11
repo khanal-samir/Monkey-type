@@ -1,15 +1,14 @@
-# Dohoro Type
+# Monkey Type
 
-Company-only Monkeytype-style typing app for Dohoro employees.
+Monkeytype-style typing practice app with timed runs, live WPM/accuracy, and a daily scoreboard.
 
-Parent PRD: [issue #1](https://github.com/khanal-samir/Dohoro-type/issues/1)  
-Slices: [#2](https://github.com/khanal-samir/Dohoro-type/issues/2) · [#3](https://github.com/khanal-samir/Dohoro-type/issues/3) · [#4](https://github.com/khanal-samir/Dohoro-type/issues/4) · [#5](https://github.com/khanal-samir/Dohoro-type/issues/5) · [#6](https://github.com/khanal-samir/Dohoro-type/issues/6)
+Repo: [github.com/khanal-samir/Monkey-type](https://github.com/khanal-samir/Monkey-type)
 
 ## Stack
 
 - **TanStack Start** (Vite + file routes + server functions)
 - **Supabase** — Postgres + Realtime (no Supabase Auth)
-- **Zustand** + localStorage — allowlist email session
+- **Zustand** + localStorage — email allowlist session (admin-managed users)
 - **Vitest** — domain unit tests
 - **Playwright** — E2E acceptance (fixture-backed, no live Supabase required)
 
@@ -26,16 +25,11 @@ cp .env.example .env
 Apply schema + seed against your Supabase project (SQL editor or CLI):
 
 1. Run `supabase/migrations/20260811000000_init.sql`
-2. Run `supabase/seed.sql`
+2. Run `supabase/migrations/20260811000001_rls_anon_access.sql`
+3. Run `supabase/seed.sql`
+4. Run `supabase/seed_passages.sql` (or `node scripts/seed-passages-to-supabase.mjs`)
 
 Seed admin: `samir1.dohoro@gmail.com` (`is_admin = true`, username `samir1`).
-
-Local Supabase CLI (optional):
-
-```bash
-npx supabase start
-npx supabase db reset   # applies migrations + seed from config.toml
-```
 
 ## Scripts
 
@@ -55,54 +49,17 @@ pnpm exec playwright install chromium
 
 ### E2E without Supabase
 
-`pnpm test:e2e` sets:
+`pnpm test:e2e` sets `VITE_E2E_FIXTURES=1` and `VITE_E2E_SHORT_TIMER=1`. Specs cover login fail/success, a completed run → daily best on the scoreboard, and admin create-user → new login.
 
-| Env | Effect |
-|-----|--------|
-| `VITE_E2E_FIXTURES=1` | In-memory users / sentences / attempts / daily bests (seeded admin + short sentence) |
-| `VITE_E2E_SHORT_TIMER=1` | Wall-clock timer ≈2.5s while scored duration stays 15 / 30 / 60 |
-
-You do **not** need a live Supabase project for acceptance. Specs cover login fail/success, a completed run → daily best on the scoreboard, and admin create-user → new login.
-
-To manually demo fixtures:
-
-```bash
-VITE_E2E_FIXTURES=1 VITE_E2E_SHORT_TIMER=1 pnpm dev
-# Sign in as samir1.dohoro@gmail.com
-```
-
-## Try typing (Supabase)
+## Try typing
 
 1. Apply migration + seed, fill `.env`.
-2. `pnpm dev` → sign in as `samir1.dohoro@gmail.com`.
-3. On `/`: pick 15 / 30 / 60, type the sentence; Tab / Escape / Restart discards incomplete runs.
-4. On timer end, WPM + accuracy save; daily best appears on Today's scoreboard.
+2. `pnpm dev` → sign in as the seeded admin email.
+3. On `/`: pick 15 / 30 / 60, type the passage; Tab then Enter restarts.
+4. On finish (passage complete or timer end), WPM + accuracy save; daily best appears on Today's scoreboard.
 5. Admin: **Users** / **Sentences**.
 
-## Project layout
-
-```
-src/
-  domain/           # Pure modules (auth, scoring, daily-best, typing-engine, …)
-  components/       # TypingArena, Scoreboard, DurationTabs
-  lib/e2e/          # Fixture store + E2E env flags
-  lib/supabase/     # Client + Database types
-  lib/users/        # User lookups (Supabase or fixtures)
-  lib/sentences/    # Sentence CRUD
-  lib/rankings/     # Attempts + daily bests
-  server/           # Server functions
-  session/          # Zustand + localStorage session
-  routes/           # /login, /, /admin/users, /admin/sentences
-supabase/
-  migrations/       # SQL schema
-  seed.sql          # Admin + sentences
-e2e/                # Playwright specs
-```
-
-## Agent workflow
-
-Implement GitHub issues in order (#2 → #3 → #4 → #5 → #6).  
-Use TDD: one failing Vitest/Playwright assertion → minimal code → next behavior.
+Anyone can be invited — admins add emails in **Users**. There is no company-domain email restriction.
 
 ## Env vars
 

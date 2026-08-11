@@ -7,7 +7,7 @@ export const SEED_ADMIN_EMAIL = 'samir1.dohoro@gmail.com'
 export const SEED_SENTENCES = [
   'The quick brown fox jumps over the lazy dog near the river bank.',
   'Practice every day and your typing speed will steadily improve.',
-  'Dohoro teammates compete fairly on the daily leaderboard.',
+  'Friends on the team compete fairly on the daily leaderboard.',
   'Clear sentences help everyone focus on accuracy and rhythm.',
   'Small consistent efforts compound into remarkable skill over time.',
 ] as const

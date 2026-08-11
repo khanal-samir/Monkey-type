@@ -6,7 +6,7 @@ describe('resolveAvatar', () => {
     expect(
       resolveAvatar({
         uploadUrl: 'https://cdn.example.com/me.png',
-        seed: 'alice@dohoro.com',
+        seed: 'alice@example.com',
       }),
     ).toBe('https://cdn.example.com/me.png')
   })
@@ -15,7 +15,7 @@ describe('resolveAvatar', () => {
     expect(
       resolveAvatar({
         uploadUrl: '  https://cdn.example.com/me.png  ',
-        seed: 'alice@dohoro.com',
+        seed: 'alice@example.com',
       }),
     ).toBe('https://cdn.example.com/me.png')
   })
@@ -27,9 +27,9 @@ describe('resolveAvatar', () => {
   })
 
   it('generates a DiceBear URL when upload is omitted', () => {
-    const url = resolveAvatar({ seed: 'bob@dohoro.com' })
+    const url = resolveAvatar({ seed: 'bob@example.com' })
     expect(url).toBe(
-      `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent('bob@dohoro.com')}`,
+      `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent('bob@example.com')}`,
     )
   })
 })

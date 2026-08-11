@@ -118,7 +118,7 @@ function AdminUsersPage() {
         <div>
           <p className="text-sm text-[var(--muted)]">
             <Link to="/" className="underline-offset-2 hover:underline">
-              ← Dohoro Type
+              ← Monkey Type
             </Link>
             {' · '}
             <Link
@@ -132,8 +132,8 @@ function AdminUsersPage() {
             Users
           </h1>
           <p className="text-sm text-[var(--muted)]">
-            Allowlist employees. Username defaults from email; avatar uploads as
-            URL or auto-generates.
+            Add anyone who should be able to sign in. Username defaults from
+            email; avatar URL optional or auto-generated.
           </p>
         </div>
       </header>

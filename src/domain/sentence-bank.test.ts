@@ -1,41 +1,67 @@
 import { describe, expect, it, vi } from 'vitest'
-import { pickSentence, type Sentence } from './sentence-bank'
+import {
+  countPassageSentences,
+  isTypingPassage,
+  pickSentence,
+  type Sentence,
+} from './sentence-bank'
 
-const activeA: Sentence = {
+const passageA: Sentence = {
   id: 'a',
-  text: 'Active sentence one.',
+  text: 'First line here. Second line follows. Third line closes.',
   isActive: true,
 }
 
-const activeB: Sentence = {
+const passageB: Sentence = {
   id: 'b',
-  text: 'Active sentence two.',
+  text: 'Alpha starts strong. Bravo keeps pace. Charlie finishes clean. Delta adds depth.',
   isActive: true,
 }
 
-const inactive: Sentence = {
+const oneLiner: Sentence = {
+  id: 'one',
+  text: 'The quick brown fox jumps over the lazy dog near the river bank.',
+  isActive: true,
+}
+
+const inactivePassage: Sentence = {
   id: 'c',
-  text: 'Inactive sentence.',
+  text: 'Inactive opener. Still three sentences. Not selectable though.',
   isActive: false,
 }
 
+describe('SentenceBank passage helpers', () => {
+  it('counts sentences by terminal punctuation', () => {
+    expect(countPassageSentences(passageA.text)).toBe(3)
+    expect(countPassageSentences(passageB.text)).toBe(4)
+    expect(countPassageSentences(oneLiner.text)).toBe(1)
+    expect(isTypingPassage(oneLiner.text)).toBe(false)
+    expect(isTypingPassage(passageA.text)).toBe(true)
+  })
+})
+
 describe('SentenceBank.pickSentence', () => {
-  it('returns a random active sentence and never picks inactive ones', () => {
+  it('returns a random active multi-sentence passage and skips one-liners', () => {
     const random = vi.fn(() => 0.9)
-    const picked = pickSentence([activeA, inactive, activeB], { random })
+    const picked = pickSentence(
+      [passageA, inactivePassage, oneLiner, passageB],
+      { random },
+    )
 
     expect(picked.isActive).toBe(true)
     expect(picked.id).toBe('b')
-    expect(picked.text).toBe('Active sentence two.')
+    expect(isTypingPassage(picked.text)).toBe(true)
   })
 
-  it('throws when no active sentences are available', () => {
-    expect(() => pickSentence([inactive])).toThrow(
-      'No active sentences available.',
-    )
+  it('never picks an active single-sentence row', () => {
+    expect(() => pickSentence([oneLiner])).toThrow(/multi-sentence/i)
+  })
+
+  it('throws when no active passages are available', () => {
+    expect(() => pickSentence([inactivePassage])).toThrow(/multi-sentence/i)
   })
 
   it('throws on an empty bank', () => {
-    expect(() => pickSentence([])).toThrow('No active sentences available.')
+    expect(() => pickSentence([])).toThrow(/multi-sentence/i)
   })
 })

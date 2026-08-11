@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { SessionUser } from '#/domain/auth'
 
-const SESSION_STORAGE_KEY = 'dohoro-session'
+const SESSION_STORAGE_KEY = 'monkey-type-session'
 
 type SessionState = {
   user: SessionUser | null

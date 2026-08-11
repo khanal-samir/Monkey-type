@@ -1,4 +1,4 @@
--- Dohoro Type v1 schema
+-- Monkey Type v1 schema
 -- Daily ranking day boundary is Asia/Kathmandu (enforced in app logic; local_date stored as date)
 
 create extension if not exists "pgcrypto";

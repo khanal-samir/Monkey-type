@@ -61,14 +61,14 @@ function LoginPage() {
             to="/"
             className="brand-mark text-base underline-offset-2 hover:underline"
           >
-            Dohoro Type
+            Monkey Type
           </Link>
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-[var(--fg)]">
           Sign in
         </h1>
         <p className="mt-2 text-[var(--muted)]">
-          Enter your allowlisted company email. No password required.
+          Enter your email. No password — an admin must add you first.
         </p>
       </div>
 
@@ -86,7 +86,7 @@ function LoginPage() {
             value={email}
             onChange={(ev) => setEmail(ev.target.value)}
             className="admin-input rounded border px-3 py-2 text-base outline-none"
-            placeholder="you.dohoro@gmail.com"
+            placeholder="you@example.com"
           />
         </label>
 

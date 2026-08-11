@@ -11,7 +11,7 @@ const admin: UserRecord = {
 
 const player: UserRecord = {
   id: 'u-player',
-  email: 'alice.dohoro@gmail.com',
+  email: 'alice@example.com',
   username: 'alice',
   avatarUrl: null,
   isAdmin: false,

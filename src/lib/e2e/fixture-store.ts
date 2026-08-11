@@ -45,12 +45,23 @@ function createInitialState(): FixtureState {
   }
 
   const sentences = new Map<string, Sentence>()
-  // Short first sentence so E2E typing is quick; keep remaining seed text as inactive fillers.
+  // Short multi-sentence passage so E2E can start typing quickly but still
+  // satisfies the ≥3 sentence typing-bank rule. Keep as the only active row
+  // so Playwright picks are deterministic.
   sentences.set(FIXTURE_SENTENCE_ID, {
     id: FIXTURE_SENTENCE_ID,
-    text: 'type fast now',
+    text: 'type fast now. keep going steady. finish strong here.',
     isActive: true,
   })
+  // Extra unique inactive passages (pool content for admin UI / bank size).
+  for (let i = 0; i < 24; i++) {
+    const id = `fixture-passage-${String(i + 2).padStart(4, '0')}`
+    sentences.set(id, {
+      id,
+      text: `Fixture passage ${i + 1} opens cleanly. The middle sentence keeps variety high. A third sentence closes the loop for practice. Optional fourth line adds depth ${i + 1}.`,
+      isActive: false,
+    })
+  }
   SEED_SENTENCES.forEach((text, i) => {
     const id = `fixture-sentence-${String(i + 2).padStart(4, '0')}`
     sentences.set(id, { id, text, isActive: false })

@@ -22,7 +22,7 @@ async function loginAs(page: Page, email: string) {
   await page.getByRole('button', { name: /continue/i }).click()
 }
 
-test.describe('Dohoro Type acceptance', () => {
+test.describe('Monkey Type acceptance', () => {
   test('rejects login for an unknown email', async ({ page }) => {
     await clearSession(page)
     await loginAs(page, 'unknown.outsider@example.com')
@@ -56,7 +56,7 @@ test.describe('Dohoro Type acceptance', () => {
 
     await typingArea.click()
     await typingArea.focus()
-    // Start the run; short timer (~2.5s) completes without typing the full sentence.
+    // Start the run; short timer (~2.5s) completes without typing the full passage.
     await page.keyboard.type('type')
 
     await expect(page.getByRole('status')).toContainText(/run complete/i, {
@@ -72,7 +72,7 @@ test.describe('Dohoro Type acceptance', () => {
   })
 
   test('admin creates a user who can then log in', async ({ page }) => {
-    const newbieEmail = `newbie.${Date.now()}@dohoro.test`
+    const newbieEmail = `newbie.${Date.now()}@example.test`
 
     await clearSession(page)
     await loginAs(page, ADMIN_EMAIL)
@@ -88,7 +88,7 @@ test.describe('Dohoro Type acceptance', () => {
 
     await expect(page.getByText(newbieEmail)).toBeVisible({ timeout: 10_000 })
 
-    await page.getByRole('link', { name: /dohoro type/i }).click()
+    await page.getByRole('link', { name: /monkey type/i }).click()
     await expect(page.getByRole('button', { name: /log out/i })).toBeVisible()
     await page.getByRole('button', { name: /log out/i }).click()
     await expect(page.getByTestId('login-form')).toBeVisible()
