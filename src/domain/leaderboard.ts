@@ -30,4 +30,24 @@ export function rankScoreboard(
   }))
 }
 
-export const Leaderboard = { rankScoreboard }
+export type UserDailyStanding = {
+  rank: number
+  wpm: number
+  accuracy: number
+}
+
+/** Today's ranked entry for a user, or null when they have no daily best yet. */
+export function findUserDailyStanding(
+  entries: readonly ScoreboardEntry[],
+  userId: string,
+): UserDailyStanding | null {
+  const entry = entries.find((row) => row.userId === userId)
+  if (!entry) return null
+  return {
+    rank: entry.rank,
+    wpm: entry.wpm,
+    accuracy: entry.accuracy,
+  }
+}
+
+export const Leaderboard = { rankScoreboard, findUserDailyStanding }

@@ -40,7 +40,7 @@ test.describe('Monkey Type acceptance', () => {
     await expect(page.getByRole('button', { name: /log out/i })).toBeVisible()
   })
 
-  test('completes a timed run and shows the daily best on the scoreboard', async ({
+  test('completes a timed run and shows the daily best on the leaderboard', async ({
     page,
   }) => {
     await clearSession(page)
@@ -66,9 +66,15 @@ test.describe('Monkey Type acceptance', () => {
       timeout: 10_000,
     })
 
-    const board = page.getByRole('region', { name: /today's scoreboard/i })
-    await expect(board.getByText('samir1')).toBeVisible({ timeout: 10_000 })
-    await expect(board.getByText(/wpm/i).first()).toBeVisible()
+    await page.getByRole('link', { name: /^leaderboard$/i }).click()
+    await expect(page).toHaveURL('/leaderboard')
+    await expect(page.getByText(/loading rankings/i)).toHaveCount(0, {
+      timeout: 10_000,
+    })
+
+    const column15 = page.getByRole('region', { name: '15s' })
+    await expect(column15.getByText('samir1')).toBeVisible({ timeout: 10_000 })
+    await expect(column15.getByText(/wpm/i).first()).toBeVisible()
   })
 
   test('admin creates a user who can then log in', async ({ page }) => {
@@ -79,7 +85,10 @@ test.describe('Monkey Type acceptance', () => {
     await expect(page).toHaveURL('/')
 
     await page.getByRole('link', { name: /^users$/i }).click()
-    await expect(page.getByRole('heading', { name: /^users$/i })).toBeVisible()
+    await expect(page).toHaveURL(/\/admin\/users/)
+    await expect(page.getByRole('heading', { name: /^users$/i })).toBeVisible({
+      timeout: 10_000,
+    })
 
     await page
       .getByRole('textbox', { name: /email \(required\)/i })

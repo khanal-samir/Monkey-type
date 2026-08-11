@@ -322,7 +322,7 @@ export function TypingArena({
           <TypingText state={state} />
         )}
         {state && state.status === 'idle' && !loading ? (
-          <p className="click-hint mt-4 text-center text-xs">
+          <p className="click-hint mt-4 text-left text-xs">
             click here or start typing
           </p>
         ) : null}
@@ -380,20 +380,62 @@ function ShortcutLegend({ completed }: { completed?: boolean }) {
 }
 
 function TypingText({ state }: { state: TypingEngineState }) {
-  const chars = state.sentenceText.split('')
+  const text = state.sentenceText
+  const tokens: Array<{ start: number; value: string; isSpace: boolean }> = []
+  let i = 0
+  while (i < text.length) {
+    if (text[i] === ' ') {
+      tokens.push({ start: i, value: ' ', isSpace: true })
+      i += 1
+      continue
+    }
+    let end = i + 1
+    while (end < text.length && text[end] !== ' ') end += 1
+    tokens.push({ start: i, value: text.slice(i, end), isSpace: false })
+    i = end
+  }
+
   return (
-    <p className="typing-text mx-auto max-w-3xl text-center font-mono text-2xl leading-relaxed tracking-wide sm:text-3xl">
-      {chars.map((ch, i) => {
-        let className = 'typing-upcoming'
-        if (i < state.caretIndex) {
-          const event = state.events[i]
-          className = event?.correct ? 'typing-correct' : 'typing-incorrect'
-        } else if (i === state.caretIndex && state.status !== 'completed') {
-          className = 'typing-caret'
+    <p className="typing-text mx-auto w-full max-w-none text-left font-mono text-[1.25rem] leading-[1.95] tracking-wide sm:text-[1.4rem] sm:leading-[2.05]">
+      {tokens.map((token) => {
+        if (token.isSpace) {
+          const idx = token.start
+          let className = 'typing-upcoming'
+          if (idx < state.caretIndex) {
+            const event = state.events[idx]
+            className = event?.correct ? 'typing-correct' : 'typing-incorrect'
+          } else if (idx === state.caretIndex && state.status !== 'completed') {
+            className = 'typing-caret'
+          }
+          return (
+            <span key={`sp-${idx}`} className={`typing-space ${className}`}>
+             {' '}
+            </span>
+          )
         }
+
         return (
-          <span key={`${i}-${ch}`} className={className}>
-            {ch === ' ' ? '\u00a0' : ch}
+          <span key={`w-${token.start}`} className="typing-word">
+            {[...token.value].map((ch, offset) => {
+              const idx = token.start + offset
+              let className = 'typing-upcoming'
+              if (idx < state.caretIndex) {
+                const event = state.events[idx]
+                className = event?.correct
+                  ? 'typing-correct'
+                  : 'typing-incorrect'
+              } else if (
+                idx === state.caretIndex &&
+                state.status !== 'completed'
+              ) {
+                className = 'typing-caret'
+              }
+              return (
+                <span key={`${idx}-${ch}`} className={className}>
+                  {ch}
+                </span>
+              )
+            })}
           </span>
         )
       })}
