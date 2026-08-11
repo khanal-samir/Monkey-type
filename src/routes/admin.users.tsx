@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { createUser, listUsers, updateUser } from '#/server/users'
+import { uploadAvatar } from '#/server/avatars'
 import type { SessionUser } from '#/domain/auth'
+import { UserAvatar } from '#/components/user-avatar'
+import { fileToBase64 } from '#/lib/avatars/upload'
 import { useSessionStore } from '#/session/store'
 import { useSessionHydrated } from '#/session/use-session-hydrated'
 
@@ -14,14 +17,17 @@ function AdminUsersPage() {
   const navigate = useNavigate()
   const hydrated = useSessionHydrated()
   const user = useSessionStore((s) => s.user)
+  const setUser = useSessionStore((s) => s.setUser)
   const listUsersFn = useServerFn(listUsers)
   const createUserFn = useServerFn(createUser)
   const updateUserFn = useServerFn(updateUser)
+  const uploadAvatarFn = useServerFn(uploadAvatar)
 
   const [users, setUsers] = useState<SessionUser[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
@@ -49,7 +55,9 @@ function AdminUsersPage() {
         if (!cancelled) setUsers(result.users)
       } catch (err) {
         if (!cancelled) {
-          setLoadError(err instanceof Error ? err.message : 'Failed to load users.')
+          setLoadError(
+            err instanceof Error ? err.message : 'Failed to load users.',
+          )
         }
       }
     })()
@@ -65,6 +73,33 @@ function AdminUsersPage() {
         <p className="text-[var(--muted)]">Loading…</p>
       </main>
     )
+  }
+
+  async function onUpload(
+    file: File | null,
+    setUrl: (url: string) => void,
+  ) {
+    if (!file) return
+    setFormError(null)
+    setUploading(true)
+    try {
+      const base64 = await fileToBase64(file)
+      const result = await uploadAvatarFn({
+        data: {
+          adminUserId: user.id,
+          fileName: file.name,
+          contentType: file.type || 'image/jpeg',
+          base64,
+        },
+      })
+      setUrl(result.publicUrl)
+    } catch (err) {
+      setFormError(
+        err instanceof Error ? err.message : 'Failed to upload avatar.',
+      )
+    } finally {
+      setUploading(false)
+    }
   }
 
   async function onCreate(e: React.FormEvent) {
@@ -103,7 +138,13 @@ function AdminUsersPage() {
           avatarUrl: editAvatarUrl,
         },
       })
-      setUsers((prev) => prev.map((u) => (u.id === result.user.id ? result.user : u)))
+      setUsers((prev) =>
+        prev.map((u) => (u.id === result.user.id ? result.user : u)),
+      )
+      // Keep header/profile in sync when editing yourself.
+      if (result.user.id === user.id) {
+        setUser(result.user)
+      }
       setEditingId(null)
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Failed to update user.')
@@ -132,8 +173,8 @@ function AdminUsersPage() {
             Users
           </h1>
           <p className="text-sm text-[var(--muted)]">
-            Add anyone who should be able to sign in. Username defaults from
-            email; avatar URL optional or auto-generated.
+            Prefer uploading an image (stored in Supabase). Hotlinked URLs from
+            other sites often break.
           </p>
         </div>
       </header>
@@ -158,7 +199,9 @@ function AdminUsersPage() {
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-[var(--fg)]">Username (optional)</span>
+            <span className="font-medium text-[var(--fg)]">
+              Username (optional)
+            </span>
             <input
               type="text"
               value={username}
@@ -168,14 +211,45 @@ function AdminUsersPage() {
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-[var(--fg)]">Avatar URL (optional)</span>
+            <span className="font-medium text-[var(--fg)]">Upload avatar</span>
             <input
-              type="url"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+              disabled={uploading || pending}
+              onChange={(ev) => {
+                void onUpload(ev.target.files?.[0] ?? null, setAvatarUrl)
+                ev.target.value = ''
+              }}
+              className="admin-input rounded border px-3 py-2 text-sm outline-none"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+            <span className="font-medium text-[var(--fg)]">
+              Avatar URL (optional)
+            </span>
+            <input
+              type="text"
               value={avatarUrl}
               onChange={(ev) => setAvatarUrl(ev.target.value)}
               className="admin-input rounded border px-3 py-2 outline-none"
-              placeholder="Leave blank to generate"
+              placeholder="Or paste a direct https://… image URL"
             />
+            {avatarUrl.trim() ? (
+              <span className="mt-1 flex items-center gap-2 text-xs text-[var(--muted)]">
+                Preview
+                <UserAvatar
+                  username={username || email || 'u'}
+                  avatarUrl={avatarUrl}
+                  size={40}
+                  className="h-10 w-10 rounded-full bg-[var(--surface)] object-cover"
+                  fallbackClassName="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface)] text-sm font-semibold"
+                />
+              </span>
+            ) : (
+              <span className="text-xs text-[var(--muted)]">
+                Leave blank to auto-generate a Dicebear avatar.
+              </span>
+            )}
           </label>
           {formError ? (
             <p role="alert" className="text-sm text-[var(--error)] sm:col-span-2">
@@ -185,10 +259,10 @@ function AdminUsersPage() {
           <div className="sm:col-span-2">
             <button
               type="submit"
-              disabled={pending}
+              disabled={pending || uploading}
               className="admin-primary rounded px-4 py-2 text-sm font-medium disabled:opacity-60"
             >
-              {pending ? 'Saving…' : 'Create user'}
+              {uploading ? 'Uploading…' : pending ? 'Saving…' : 'Create user'}
             </button>
           </div>
         </form>
@@ -205,19 +279,13 @@ function AdminUsersPage() {
               className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between"
             >
               <div className="flex items-center gap-3">
-                {u.avatarUrl ? (
-                  <img
-                    src={u.avatarUrl}
-                    alt=""
-                    width={40}
-                    height={40}
-                    className="h-10 w-10 rounded-full bg-[var(--surface)]"
-                  />
-                ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface)] text-sm font-semibold text-[var(--fg)]">
-                    {u.username.slice(0, 1).toUpperCase()}
-                  </div>
-                )}
+                <UserAvatar
+                  username={u.username}
+                  avatarUrl={u.avatarUrl}
+                  size={40}
+                  className="h-10 w-10 rounded-full bg-[var(--surface)] object-cover"
+                  fallbackClassName="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface)] text-sm font-semibold text-[var(--fg)]"
+                />
                 <div>
                   <p className="font-medium text-[var(--fg)]">
                     {u.username}
@@ -241,16 +309,38 @@ function AdminUsersPage() {
                     placeholder="Username"
                   />
                   <input
-                    type="url"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                    disabled={uploading || pending}
+                    onChange={(ev) => {
+                      void onUpload(
+                        ev.target.files?.[0] ?? null,
+                        setEditAvatarUrl,
+                      )
+                      ev.target.value = ''
+                    }}
+                    className="admin-input rounded border px-2 py-1.5 text-sm"
+                  />
+                  <input
+                    type="text"
                     value={editAvatarUrl}
                     onChange={(ev) => setEditAvatarUrl(ev.target.value)}
                     className="admin-input rounded border px-2 py-1.5 text-sm"
                     placeholder="Avatar URL"
                   />
+                  {editAvatarUrl.trim() ? (
+                    <UserAvatar
+                      username={editUsername || u.username}
+                      avatarUrl={editAvatarUrl}
+                      size={40}
+                      className="h-10 w-10 rounded-full bg-[var(--surface)] object-cover"
+                      fallbackClassName="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface)] text-sm font-semibold"
+                    />
+                  ) : null}
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      disabled={pending}
+                      disabled={pending || uploading}
                       onClick={() => void onSaveEdit(u)}
                       className="admin-primary rounded px-3 py-1.5 text-xs font-medium"
                     >

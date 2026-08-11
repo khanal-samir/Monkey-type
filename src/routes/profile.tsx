@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { AppHeader } from '#/components/app-header'
+import { UserAvatar } from '#/components/user-avatar'
 import { COMPANY_TIMEZONE } from '#/domain/seed'
 import {
   findUserDailyStanding,
@@ -42,34 +43,6 @@ function formatWpm(value: number | null | undefined): string {
 
 function formatAccuracy(value: number | null | undefined): string {
   return value == null ? '—' : `${Math.round(value)}%`
-}
-
-function ProfileAvatar({
-  avatarUrl,
-  username,
-}: {
-  avatarUrl: string | null
-  username: string
-}) {
-  const className = 'profile-avatar profile-avatar-hero'
-
-  if (avatarUrl) {
-    return (
-      <img
-        src={avatarUrl}
-        alt=""
-        width={88}
-        height={88}
-        className={className}
-      />
-    )
-  }
-
-  return (
-    <div className={`${className} profile-avatar-fallback`} aria-hidden>
-      {username.slice(0, 1).toUpperCase()}
-    </div>
-  )
 }
 
 function StandingRow({
@@ -183,9 +156,12 @@ function ProfilePage() {
       <AppHeader user={user} />
 
       <section className="profile-hero" aria-labelledby="profile-heading">
-        <ProfileAvatar
-          avatarUrl={user.avatarUrl}
+        <UserAvatar
           username={user.username}
+          avatarUrl={user.avatarUrl}
+          size={88}
+          className="profile-avatar profile-avatar-hero"
+          fallbackClassName="profile-avatar profile-avatar-hero profile-avatar-fallback"
         />
         <div className="profile-identity">
           <h1 id="profile-heading" className="profile-username">

@@ -1,29 +1,10 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import type { SessionUser } from '#/domain/auth'
+import { UserAvatar } from '#/components/user-avatar'
 import { useSessionStore } from '#/session/store'
 
 type AppHeaderProps = {
   user: SessionUser
-}
-
-function UserAvatar({ user }: { user: SessionUser }) {
-  if (user.avatarUrl) {
-    return (
-      <img
-        src={user.avatarUrl}
-        alt=""
-        width={32}
-        height={32}
-        className="app-header-avatar"
-      />
-    )
-  }
-
-  return (
-    <div className="app-header-avatar app-header-avatar-fallback" aria-hidden>
-      {user.username.slice(0, 1).toUpperCase()}
-    </div>
-  )
 }
 
 function NavLink({
@@ -69,7 +50,13 @@ export function AppHeader({ user }: AppHeaderProps) {
 
       <div className="app-header-end">
         <Link to="/profile" className="app-header-user">
-          <UserAvatar user={user} />
+          <UserAvatar
+            username={user.username}
+            avatarUrl={user.avatarUrl}
+            size={32}
+            className="app-header-avatar"
+            fallbackClassName="app-header-avatar app-header-avatar-fallback"
+          />
           <span className="app-header-username">{user.username}</span>
         </Link>
 

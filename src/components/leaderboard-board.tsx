@@ -11,6 +11,7 @@ import {
   getSupabaseBrowserClient,
   isSupabaseConfigured,
 } from '#/lib/supabase/client'
+import { UserAvatar } from '#/components/user-avatar'
 
 type LeaderboardBoardProps = {
   userId: string
@@ -21,26 +22,6 @@ type BoardsByDuration = Record<DurationSec, ScoreboardEntry[]>
 
 const LEADERBOARD_TOP_N = 5
 const EMPTY_BOARDS: BoardsByDuration = { 15: [], 30: [], 60: [] }
-
-function EntryAvatar({ entry }: { entry: ScoreboardEntry }) {
-  if (entry.avatarUrl) {
-    return (
-      <img
-        src={entry.avatarUrl}
-        alt=""
-        width={32}
-        height={32}
-        className="lb-avatar"
-      />
-    )
-  }
-
-  return (
-    <div className="lb-avatar lb-avatar-fallback" aria-hidden>
-      {entry.username.slice(0, 1).toUpperCase()}
-    </div>
-  )
-}
 
 function LeaderboardColumn({
   durationSec,
@@ -70,7 +51,13 @@ function LeaderboardColumn({
               className={`lb-row${entry.rank === 1 ? ' lb-rank-1' : ''}`}
             >
               <span className="lb-rank">{entry.rank}</span>
-              <EntryAvatar entry={entry} />
+              <UserAvatar
+                username={entry.username}
+                avatarUrl={entry.avatarUrl}
+                size={32}
+                className="lb-avatar"
+                fallbackClassName="lb-avatar lb-avatar-fallback"
+              />
               <span className="lb-username">{entry.username}</span>
               <span className="lb-stats">
                 <span className="lb-wpm">{Math.round(entry.wpm)}</span>
