@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { AppHeader } from '#/components/app-header'
-import { UserAvatar } from '#/components/user-avatar'
+import { UserAvatarPreview } from '#/components/user-avatar-preview'
 import { COMPANY_TIMEZONE } from '#/domain/seed'
 import {
   findUserDailyStanding,
@@ -156,12 +156,14 @@ function ProfilePage() {
       <AppHeader user={user} />
 
       <section className="profile-hero" aria-labelledby="profile-heading">
-        <UserAvatar
+        <UserAvatarPreview
           username={user.username}
           avatarUrl={user.avatarUrl}
           size={88}
+          previewSize={200}
           className="profile-avatar profile-avatar-hero"
           fallbackClassName="profile-avatar profile-avatar-hero profile-avatar-fallback"
+          triggerClassName="profile-avatar-trigger"
         />
         <div className="profile-identity">
           <h1 id="profile-heading" className="profile-username">

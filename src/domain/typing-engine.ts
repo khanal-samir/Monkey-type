@@ -104,13 +104,9 @@ export function createTypingEngine(options: TypingEngineOptions): TypingEngine {
   let startedAtMs: number | null = null
 
   function snapshot(): TypingEngineState {
-    return {
-      ...state,
-      events: [...state.events],
-      result: state.result
-        ? { ...state.result, events: [...state.result.events] }
-        : null,
-    }
+    // Shallow copy only — events/result are replaced immutably on writes.
+    // Avoid cloning the events array on every keystroke / timer tick.
+    return { ...state }
   }
 
   function complete(endedAtMs: number) {
@@ -169,11 +165,13 @@ export function createTypingEngine(options: TypingEngineOptions): TypingEngine {
         atMs: relativeMs,
       }
 
+      // Mutate events in place — avoids O(n) copy on every keystroke.
+      state.events.push(event)
       state = {
         ...state,
         caretIndex: state.caretIndex + 1,
         typed: state.typed + char,
-        events: [...state.events, event],
+        events: state.events,
         elapsedMs: relativeMs,
         remainingMs: Math.max(0, timerMs - relativeMs),
       }
@@ -187,11 +185,12 @@ export function createTypingEngine(options: TypingEngineOptions): TypingEngine {
       if (state.status === 'completed') return
       if (state.caretIndex === 0) return
 
+      state.events.pop()
       state = {
         ...state,
         caretIndex: state.caretIndex - 1,
         typed: state.typed.slice(0, -1),
-        events: state.events.slice(0, -1),
+        events: state.events,
       }
     },
 

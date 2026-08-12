@@ -1,4 +1,4 @@
-# Monkey Type
+# Typer Durden
 
 Monkeytype-style typing practice app with timed runs, live WPM/accuracy, and a daily scoreboard.
 

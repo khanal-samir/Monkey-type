@@ -1,16 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useServerFn } from '@tanstack/react-start'
 import { pickActiveSentence } from '#/server/sentences'
 import { submitAttempt } from '#/server/rankings'
 import { scoreAttempt } from '#/domain/scoring'
 import { E2E_SHORT_TIMER_MS, isE2eShortTimer } from '#/lib/e2e/env'
-import {
-  createTypingEngine,
-  type CompletedAttempt,
-  type DurationSec,
-  type TypingEngine,
-  type TypingEngineState,
-  type TypingSentence,
+import { createTypingEngine } from '#/domain/typing-engine'
+import type {
+  CompletedAttempt,
+  DurationSec,
+  TypingEngine,
+  TypingEngineState,
+  TypingSentence,
+  TypingStatus,
 } from '#/domain/typing-engine'
 
 type TypingArenaProps = {
@@ -20,9 +31,14 @@ type TypingArenaProps = {
   onAttemptSaved?: (info: { dailyBestUpdated: boolean }) => void
 }
 
-type LiveScore = {
+type RunScore = {
   wpm: number
   accuracy: number
+}
+
+type TypingSurfaceHandle = {
+  sync: (state: TypingEngineState) => void
+  reset: (text: string) => void
 }
 
 export function TypingArena({
@@ -34,16 +50,21 @@ export function TypingArena({
   const submitFn = useServerFn(submitAttempt)
   const engineRef = useRef<TypingEngine | null>(null)
   const focusRef = useRef<HTMLDivElement>(null)
+  const surfaceRef = useRef<TypingSurfaceHandle>(null)
   const savedAttemptKeyRef = useRef<string | null>(null)
   const onAttemptSavedRef = useRef(onAttemptSaved)
   onAttemptSavedRef.current = onAttemptSaved
   const pendingRestartRef = useRef(false)
+  const displayedSecRef = useRef(duration)
 
-  const [state, setState] = useState<TypingEngineState | null>(null)
+  const [passageText, setPassageText] = useState<string | null>(null)
+  const [runStatus, setRunStatus] = useState<TypingStatus>('idle')
+  const [completedResult, setCompletedResult] =
+    useState<CompletedAttempt | null>(null)
+  const [remainingSec, setRemainingSec] = useState(duration)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [completedScore, setCompletedScore] = useState<LiveScore | null>(null)
-  const [liveScore, setLiveScore] = useState<LiveScore | null>(null)
+  const [completedScore, setCompletedScore] = useState<RunScore | null>(null)
   const [pendingRestart, setPendingRestart] = useState(false)
   const [saveStatus, setSaveStatus] = useState<
     'idle' | 'saving' | 'saved' | 'error'
@@ -56,24 +77,6 @@ export function TypingArena({
     setPendingRestart(false)
   }, [])
 
-  const sync = useCallback(() => {
-    const engine = engineRef.current
-    if (!engine) return
-    const next = engine.getState()
-    setState(next)
-    if (next.status === 'running' && next.events.length > 0) {
-      setLiveScore(
-        scoreAttempt({
-          durationSec: next.durationSec,
-          events: next.events,
-          elapsedMs: Math.max(next.elapsedMs, 1),
-        }),
-      )
-    } else if (next.status === 'idle') {
-      setLiveScore(null)
-    }
-  }, [])
-
   const persistResult = useCallback(
     async (result: CompletedAttempt) => {
       const key = `${result.startedAtMs}-${result.endedAtMs}-${result.durationSec}`
@@ -82,7 +85,6 @@ export function TypingArena({
 
       const score = scoreAttempt(result)
       setCompletedScore(score)
-      setLiveScore(null)
       setSaveStatus('saving')
       setSaveError(null)
       setDailyBestUpdated(false)
@@ -116,8 +118,11 @@ export function TypingArena({
     (after: TypingEngineState) => {
       if (after.status !== 'completed' || !after.result) return
       clearPendingRestart()
+      setRunStatus('completed')
+      setCompletedResult(after.result)
+      setRemainingSec(0)
+      displayedSecRef.current = 0
       setCompletedScore(scoreAttempt(after.result))
-      setLiveScore(null)
       void persistResult(after.result)
     },
     [clearPendingRestart, persistResult],
@@ -134,13 +139,22 @@ export function TypingArena({
       savedAttemptKeyRef.current = null
       clearPendingRestart()
       setCompletedScore(null)
-      setLiveScore(null)
+      setCompletedResult(null)
       setSaveStatus('idle')
       setSaveError(null)
       setDailyBestUpdated(false)
-      setState(engine.getState())
+      const initial = engine.getState()
+      setPassageText(initial.sentenceText)
+      setRunStatus(initial.status)
+      displayedSecRef.current = Math.ceil(initial.remainingMs / 1000)
+      setRemainingSec(displayedSecRef.current)
       setLoading(false)
-      requestAnimationFrame(() => focusRef.current?.focus())
+      // Reset surface after React commits the new passage.
+      requestAnimationFrame(() => {
+        surfaceRef.current?.reset(initial.sentenceText)
+        surfaceRef.current?.sync(initial)
+        focusRef.current?.focus()
+      })
     },
     [clearPendingRestart],
   )
@@ -167,7 +181,7 @@ export function TypingArena({
 
   useEffect(() => {
     void loadSentence(duration)
-    // Reload when identity or shared duration changes.
+    // Reload only when identity or shared duration changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, duration])
 
@@ -179,17 +193,15 @@ export function TypingArena({
       if (before.status !== 'running') return
       engine.tick()
       const after = engine.getState()
-      setState(after)
       if (after.status === 'completed' && after.result) {
         handleCompleted(after)
-      } else if (after.events.length > 0) {
-        setLiveScore(
-          scoreAttempt({
-            durationSec: after.durationSec,
-            events: after.events,
-            elapsedMs: Math.max(after.elapsedMs, 1),
-          }),
-        )
+        return
+      }
+      const nextSec = Math.ceil(after.remainingMs / 1000)
+      // Avoid React re-renders when the displayed second is unchanged.
+      if (nextSec !== displayedSecRef.current) {
+        displayedSecRef.current = nextSec
+        setRemainingSec(nextSec)
       }
     }, 100)
     return () => window.clearInterval(id)
@@ -228,9 +240,12 @@ export function TypingArena({
 
       if (e.key === 'Backspace') {
         e.preventDefault()
-        if (engine.getState().status === 'completed') return
+        const before = engine.getState()
+        if (before.status === 'completed') return
         engine.backspace()
-        sync()
+        const after = engine.getState()
+        // Imperative DOM only — no React letter re-render on the hot path.
+        surfaceRef.current?.sync(after)
         return
       }
 
@@ -242,66 +257,35 @@ export function TypingArena({
           clearPendingRestart()
         }
         engine.inputChar(e.key)
-        engine.tick()
         const after = engine.getState()
-        setState(after)
+        surfaceRef.current?.sync(after)
+        if (before.status === 'idle' && after.status === 'running') {
+          setRunStatus('running')
+        }
         if (after.status === 'completed' && after.result) {
           handleCompleted(after)
-        } else if (after.events.length > 0) {
-          setLiveScore(
-            scoreAttempt({
-              durationSec: after.durationSec,
-              events: after.events,
-              elapsedMs: Math.max(after.elapsedMs, 1),
-            }),
-          )
         }
       }
     }
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [clearPendingRestart, discardAndRestart, handleCompleted, sync])
+  }, [clearPendingRestart, discardAndRestart, handleCompleted])
 
-  const remainingSec = state
-    ? Math.ceil(state.remainingMs / 1000)
-    : duration
-
-  const displayWpm =
-    state?.status === 'running' && liveScore
-      ? Math.round(liveScore.wpm)
-      : state?.status === 'completed' && completedScore
-        ? Math.round(completedScore.wpm)
-        : null
-  const displayAcc =
-    state?.status === 'running' && liveScore
-      ? Math.round(liveScore.accuracy)
-      : state?.status === 'completed' && completedScore
-        ? Math.round(completedScore.accuracy)
-        : null
+  const isCompleted = runStatus === 'completed'
 
   return (
     <section className="typing-arena flex w-full flex-col items-center gap-6">
-      <div className="live-stats flex items-end justify-center gap-8 tabular-nums">
-        <div className="stat-block text-center">
-          <p className="stat-value font-mono text-3xl tracking-tight sm:text-4xl">
-            {state?.status === 'completed' ? 0 : remainingSec}
-          </p>
-          <p className="stat-label">time</p>
+      {!isCompleted ? (
+        <div className="live-stats flex items-end justify-center gap-8 tabular-nums">
+          <div className="stat-block text-center">
+            <p className="stat-value font-mono text-3xl tracking-tight sm:text-4xl">
+              {remainingSec}
+            </p>
+            <p className="stat-label">time</p>
+          </div>
         </div>
-        <div className="stat-block text-center">
-          <p className="stat-value font-mono text-3xl tracking-tight sm:text-4xl">
-            {displayWpm ?? '—'}
-          </p>
-          <p className="stat-label">wpm</p>
-        </div>
-        <div className="stat-block text-center">
-          <p className="stat-value font-mono text-3xl tracking-tight sm:text-4xl">
-            {displayAcc ?? '—'}
-          </p>
-          <p className="stat-label">acc</p>
-        </div>
-      </div>
+      ) : null}
 
       {loadError ? (
         <p role="alert" className="text-sm text-[var(--error)]">
@@ -316,12 +300,20 @@ export function TypingArena({
         aria-label="Typing area"
         onClick={() => focusRef.current?.focus()}
       >
-        {loading || !state ? (
+        {loading || !passageText ? (
           <p className="typing-muted text-center text-lg">Loading sentence…</p>
+        ) : isCompleted && completedResult && completedScore ? (
+          <ResultSummary
+            result={completedResult}
+            score={completedScore}
+            saveStatus={saveStatus}
+            saveError={saveError}
+            dailyBestUpdated={dailyBestUpdated}
+          />
         ) : (
-          <TypingText state={state} />
+          <TypingSurface ref={surfaceRef} text={passageText} />
         )}
-        {state && state.status === 'idle' && !loading ? (
+        {runStatus === 'idle' && !loading && passageText ? (
           <p className="click-hint mt-4 text-left text-xs">
             click here or start typing
           </p>
@@ -345,17 +337,7 @@ export function TypingArena({
         </button>
       </div>
 
-      <ShortcutLegend completed={state?.status === 'completed'} />
-
-      {state?.status === 'completed' && state.result && completedScore ? (
-        <ResultSummary
-          result={state.result}
-          score={completedScore}
-          saveStatus={saveStatus}
-          saveError={saveError}
-          dailyBestUpdated={dailyBestUpdated}
-        />
-      ) : null}
+      <ShortcutLegend completed={isCompleted} />
     </section>
   )
 }
@@ -379,9 +361,10 @@ function ShortcutLegend({ completed }: { completed?: boolean }) {
   )
 }
 
-function TypingText({ state }: { state: TypingEngineState }) {
-  const text = state.sentenceText
-  const tokens: Array<{ start: number; value: string; isSpace: boolean }> = []
+type TextToken = { start: number; value: string; isSpace: boolean }
+
+function tokenizePassage(text: string): TextToken[] {
+  const tokens: TextToken[] = []
   let i = 0
   while (i < text.length) {
     if (text[i] === ' ') {
@@ -394,54 +377,259 @@ function TypingText({ state }: { state: TypingEngineState }) {
     tokens.push({ start: i, value: text.slice(i, end), isSpace: false })
     i = end
   }
+  return tokens
+}
 
-  return (
-    <p className="typing-text mx-auto w-full max-w-none text-left font-mono text-[1.25rem] leading-[1.95] tracking-wide sm:text-[1.4rem] sm:leading-[2.05]">
-      {tokens.map((token) => {
-        if (token.isSpace) {
-          const idx = token.start
-          let className = 'typing-upcoming'
-          if (idx < state.caretIndex) {
-            const event = state.events[idx]
-            className = event?.correct ? 'typing-correct' : 'typing-incorrect'
-          } else if (idx === state.caretIndex && state.status !== 'completed') {
-            className = 'typing-caret'
+const LETTER_BASE = 'typing-letter'
+const SPACE_BASE = 'typing-space typing-letter'
+
+function setLetterClass(
+  el: HTMLElement,
+  isSpace: boolean,
+  kind: 'upcoming' | 'correct' | 'incorrect',
+) {
+  el.className = `${isSpace ? SPACE_BASE : LETTER_BASE} typing-${kind}`
+}
+
+/**
+ * Static letter DOM + imperative class/caret updates.
+ * Keystrokes never re-render the passage — same model as Monkeytype.
+ */
+const TypingSurface = memo(
+  forwardRef<TypingSurfaceHandle, { text: string }>(function TypingSurface(
+    { text },
+    ref,
+  ) {
+    const viewportRef = useRef<HTMLDivElement>(null)
+    const wordsRef = useRef<HTMLParagraphElement>(null)
+    const caretRef = useRef<HTMLDivElement>(null)
+    const letterElsRef = useRef<(HTMLElement | null)[]>([])
+    const spaceFlagsRef = useRef<boolean[]>([])
+    const caretIndexRef = useRef(0)
+    const lineOffsetRef = useRef(0)
+    const caretReadyRef = useRef(false)
+    const metricsRef = useRef({ lh: 0, fontSize: 0 })
+    const preferReducedRef = useRef(false)
+    const tokens = useMemo(() => tokenizePassage(text), [text])
+
+    const refreshLetterIndex = useCallback(() => {
+      const words = wordsRef.current
+      if (!words) return
+      const nodes = words.querySelectorAll<HTMLElement>('[data-i]')
+      const letters: (HTMLElement | null)[] = []
+      const spaces: boolean[] = []
+      for (const node of nodes) {
+        const i = Number(node.dataset.i)
+        if (!Number.isFinite(i)) continue
+        letters[i] = node
+        spaces[i] = node.classList.contains('typing-space')
+      }
+      letterElsRef.current = letters
+      spaceFlagsRef.current = spaces
+
+      const style = getComputedStyle(words)
+      metricsRef.current = {
+        lh: parseFloat(style.lineHeight) || 0,
+        fontSize: parseFloat(style.fontSize) || 0,
+      }
+      preferReducedRef.current = window.matchMedia(
+        '(prefers-reduced-motion: reduce)',
+      ).matches
+    }, [])
+
+    const placeCaret = useCallback((caretIndex: number, smooth: boolean) => {
+      const viewport = viewportRef.current
+      const words = wordsRef.current
+      const caret = caretRef.current
+      if (!viewport || !words || !caret) return
+
+      const letters = letterElsRef.current
+      if (letters.length === 0) return
+
+      caret.classList.remove('typing-caret-hidden')
+
+      let metrics = metricsRef.current
+      if (!metrics.lh || !metrics.fontSize) {
+        const style = getComputedStyle(words)
+        metrics = {
+          lh: parseFloat(style.lineHeight) || words.getBoundingClientRect().height / 3,
+          fontSize: parseFloat(style.fontSize) || 16,
+        }
+        metricsRef.current = metrics
+      }
+
+      const targetIndex = Math.min(
+        caretIndex,
+        Math.max(0, letters.length - 1),
+      )
+      const target = letters[targetIndex]
+      if (!target) return
+
+      const activeLine = Math.floor(target.offsetTop / metrics.lh)
+      const nextOffset = Math.max(0, activeLine) * metrics.lh
+      const scrolled = nextOffset !== lineOffsetRef.current
+      lineOffsetRef.current = nextOffset
+      words.style.transform = `translateY(${-nextOffset}px)`
+
+      const viewportRect = viewport.getBoundingClientRect()
+      const targetRect = target.getBoundingClientRect()
+      const caretHeight = Math.min(metrics.fontSize, targetRect.height)
+      let x = targetRect.left - viewportRect.left
+      const y =
+        targetRect.top -
+        viewportRect.top +
+        (targetRect.height - caretHeight) / 2
+      if (caretIndex >= letters.length) {
+        x += targetRect.width
+      }
+
+      const allowSmooth =
+        smooth && caretReadyRef.current && !scrolled && !preferReducedRef.current
+
+      caret.classList.toggle('typing-caret-smooth', allowSmooth)
+      caret.style.height = `${caretHeight}px`
+      caret.style.transform = `translate(${x}px, ${y}px)`
+
+      if (!caretReadyRef.current) {
+        requestAnimationFrame(() => {
+          caretReadyRef.current = true
+        })
+      }
+    }, [])
+
+    const sync = useCallback(
+      (state: TypingEngineState) => {
+        const letters = letterElsRef.current
+        const spaces = spaceFlagsRef.current
+        if (letters.length === 0) return
+
+        const prev = caretIndexRef.current
+        const next = state.caretIndex
+        const events = state.events
+
+        if (next > prev) {
+          for (let i = prev; i < next; i++) {
+            const el = letters[i]
+            if (!el) continue
+            setLetterClass(
+              el,
+              Boolean(spaces[i]),
+              events[i]?.correct ? 'correct' : 'incorrect',
+            )
           }
-          return (
-            <span key={`sp-${idx}`} className={`typing-space ${className}`}>
-             {' '}
-            </span>
-          )
+        } else if (next < prev) {
+          for (let i = next; i < prev; i++) {
+            const el = letters[i]
+            if (!el) continue
+            setLetterClass(el, Boolean(spaces[i]), 'upcoming')
+          }
         }
 
-        return (
-          <span key={`w-${token.start}`} className="typing-word">
-            {[...token.value].map((ch, offset) => {
-              const idx = token.start + offset
-              let className = 'typing-upcoming'
-              if (idx < state.caretIndex) {
-                const event = state.events[idx]
-                className = event?.correct
-                  ? 'typing-correct'
-                  : 'typing-incorrect'
-              } else if (
-                idx === state.caretIndex &&
-                state.status !== 'completed'
-              ) {
-                className = 'typing-caret'
-              }
+        caretIndexRef.current = next
+
+        if (state.status === 'completed') {
+          caretRef.current?.classList.add('typing-caret-hidden')
+          caretRef.current?.classList.remove('typing-caret-smooth')
+          return
+        }
+
+        placeCaret(next, true)
+      },
+      [placeCaret],
+    )
+
+    const reset = useCallback(
+      (nextText: string) => {
+        void nextText
+        caretIndexRef.current = 0
+        lineOffsetRef.current = 0
+        caretReadyRef.current = false
+        const words = wordsRef.current
+        if (words) words.style.transform = 'translateY(0px)'
+        refreshLetterIndex()
+        for (let i = 0; i < letterElsRef.current.length; i++) {
+          const el = letterElsRef.current[i]
+          if (!el) continue
+          setLetterClass(el, Boolean(spaceFlagsRef.current[i]), 'upcoming')
+        }
+        const caret = caretRef.current
+        if (caret) {
+          caret.classList.add('typing-caret-hidden')
+          caret.classList.remove('typing-caret-smooth')
+          caret.style.transform = 'translate(0, 0)'
+        }
+      },
+      [refreshLetterIndex],
+    )
+
+    useImperativeHandle(ref, () => ({ sync, reset }), [sync, reset])
+
+    useLayoutEffect(() => {
+      caretIndexRef.current = 0
+      lineOffsetRef.current = 0
+      caretReadyRef.current = false
+      const words = wordsRef.current
+      if (words) words.style.transform = 'translateY(0px)'
+      refreshLetterIndex()
+      placeCaret(0, false)
+    }, [text, refreshLetterIndex, placeCaret])
+
+    useEffect(() => {
+      const viewport = viewportRef.current
+      if (!viewport) return
+      const ro = new ResizeObserver(() => {
+        refreshLetterIndex()
+        lineOffsetRef.current = -1
+        placeCaret(caretIndexRef.current, false)
+      })
+      ro.observe(viewport)
+      return () => ro.disconnect()
+    }, [text, refreshLetterIndex, placeCaret])
+
+    return (
+      <div ref={viewportRef} className="typing-viewport">
+        <div
+          ref={caretRef}
+          className="typing-caret-el typing-caret-hidden"
+          aria-hidden
+        />
+        <p ref={wordsRef} className="typing-words">
+          {tokens.map((token) => {
+            if (token.isSpace) {
+              const idx = token.start
               return (
-                <span key={`${idx}-${ch}`} className={className}>
-                  {ch}
+                <span
+                  key={`sp-${idx}`}
+                  data-i={idx}
+                  className={`${SPACE_BASE} typing-upcoming`}
+                >
+                  {' '}
                 </span>
               )
-            })}
-          </span>
-        )
-      })}
-    </p>
-  )
-}
+            }
+
+            return (
+              <span key={`w-${token.start}`} className="typing-word">
+                {[...token.value].map((ch, offset) => {
+                  const idx = token.start + offset
+                  return (
+                    <span
+                      key={`${idx}-${ch}`}
+                      data-i={idx}
+                      className={`${LETTER_BASE} typing-upcoming`}
+                    >
+                      {ch}
+                    </span>
+                  )
+                })}
+              </span>
+            )
+          })}
+        </p>
+      </div>
+    )
+  }),
+)
 
 function ResultSummary({
   result,
@@ -451,37 +639,38 @@ function ResultSummary({
   dailyBestUpdated,
 }: {
   result: CompletedAttempt
-  score: LiveScore
+  score: RunScore
   saveStatus: 'idle' | 'saving' | 'saved' | 'error'
   saveError: string | null
   dailyBestUpdated: boolean
 }) {
   return (
-    <div className="result-panel w-full max-w-md text-center" role="status">
-      <p className="result-label text-xs uppercase tracking-[0.2em]">
-        Run complete · {result.durationSec}s board
-      </p>
-      <div className="mt-3 flex justify-center gap-10">
+    <div className="result-panel w-full text-center" role="status">
+      <div className="flex justify-center gap-12 sm:gap-16">
         <div>
-          <p className="result-value font-mono text-4xl tabular-nums">
+          <p className="result-value font-mono text-5xl tabular-nums tracking-tight sm:text-6xl">
             {Math.round(score.wpm)}
           </p>
-          <p className="result-label text-xs uppercase tracking-wider">wpm</p>
+          <p className="result-label mt-2 text-xs uppercase tracking-wider">
+            wpm
+          </p>
         </div>
         <div>
-          <p className="result-value font-mono text-4xl tabular-nums">
+          <p className="result-value font-mono text-5xl tabular-nums tracking-tight sm:text-6xl">
             {Math.round(score.accuracy)}
           </p>
-          <p className="result-label text-xs uppercase tracking-wider">acc</p>
+          <p className="result-label mt-2 text-xs uppercase tracking-wider">
+            acc
+          </p>
         </div>
       </div>
-      <p className="typing-hint mt-3 text-xs">
+      <p className="typing-hint mt-5 text-xs">
         {saveStatus === 'saving'
           ? 'Saving attempt…'
           : saveStatus === 'saved'
             ? dailyBestUpdated
-              ? 'Saved · new daily best for this duration'
-              : 'Saved · daily best unchanged'
+              ? `Saved · new daily best · ${result.durationSec}s`
+              : `Saved · daily best unchanged · ${result.durationSec}s`
             : saveStatus === 'error'
               ? (saveError ?? 'Save failed')
               : 'Tab + Enter for next test'}

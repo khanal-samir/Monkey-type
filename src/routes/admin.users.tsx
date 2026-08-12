@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { createUser, listUsers, updateUser } from '#/server/users'
 import { uploadAvatar } from '#/server/avatars'
+import { APP_NAME } from '#/lib/app-brand'
 import type { SessionUser } from '#/domain/auth'
 import { UserAvatar } from '#/components/user-avatar'
 import { fileToBase64 } from '#/lib/avatars/upload'
@@ -159,7 +160,7 @@ function AdminUsersPage() {
         <div>
           <p className="text-sm text-[var(--muted)]">
             <Link to="/" className="underline-offset-2 hover:underline">
-              ← Monkey Type
+              ← {APP_NAME}
             </Link>
             {' · '}
             <Link

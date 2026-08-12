@@ -4,6 +4,7 @@ import { useServerFn } from '@tanstack/react-start'
 import { loginByEmail } from '#/server/users'
 import { useSessionStore } from '#/session/store'
 import { useSessionHydrated } from '#/session/use-session-hydrated'
+import { APP_NAME } from '#/lib/app-brand'
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
@@ -61,7 +62,7 @@ function LoginPage() {
             to="/"
             className="brand-mark text-base underline-offset-2 hover:underline"
           >
-            Monkey Type
+            {APP_NAME}
           </Link>
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-[var(--fg)]">

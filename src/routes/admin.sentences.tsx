@@ -7,6 +7,7 @@ import {
   updateSentenceFn,
 } from '#/server/sentences'
 import type { Sentence } from '#/domain/sentence-bank'
+import { APP_NAME } from '#/lib/app-brand'
 import { useSessionStore } from '#/session/store'
 import { useSessionHydrated } from '#/session/use-session-hydrated'
 
@@ -143,7 +144,7 @@ function AdminSentencesPage() {
         <div>
           <p className="text-sm text-[var(--muted)]">
             <Link to="/" className="underline-offset-2 hover:underline">
-              ← Monkey Type
+              ← {APP_NAME}
             </Link>
             {' · '}
             <Link

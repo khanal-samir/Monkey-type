@@ -22,7 +22,7 @@ async function loginAs(page: Page, email: string) {
   await page.getByRole('button', { name: /continue/i }).click()
 }
 
-test.describe('Monkey Type acceptance', () => {
+test.describe('Typer Durden acceptance', () => {
   test('rejects login for an unknown email', async ({ page }) => {
     await clearSession(page)
     await loginAs(page, 'unknown.outsider@example.com')
@@ -59,12 +59,10 @@ test.describe('Monkey Type acceptance', () => {
     // Start the run; short timer (~2.5s) completes without typing the full passage.
     await page.keyboard.type('type')
 
-    await expect(page.getByRole('status')).toContainText(/run complete/i, {
-      timeout: 20_000,
-    })
-    await expect(page.getByRole('status')).toContainText(/saved/i, {
-      timeout: 10_000,
-    })
+    const result = page.getByRole('status')
+    await expect(result.getByText(/^wpm$/i)).toBeVisible({ timeout: 20_000 })
+    await expect(result.getByText(/^acc$/i)).toBeVisible()
+    await expect(result).toContainText(/saved/i, { timeout: 10_000 })
 
     await page.getByRole('link', { name: /^leaderboard$/i }).click()
     await expect(page).toHaveURL('/leaderboard')

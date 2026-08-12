@@ -8,6 +8,7 @@ import {
   isSupabaseConfigured,
 } from '#/lib/supabase/client'
 import { localDateInTimezone } from '#/domain/daily-best'
+import { UserAvatarPreview } from '#/components/user-avatar-preview'
 
 type ScoreboardProps = {
   userId: string
@@ -117,19 +118,13 @@ export function Scoreboard({
               <span className="scoreboard-rank w-6 shrink-0 font-mono text-sm tabular-nums text-[var(--muted)]">
                 {entry.rank}
               </span>
-              {entry.avatarUrl ? (
-                <img
-                  src={entry.avatarUrl}
-                  alt=""
-                  width={32}
-                  height={32}
-                  className="h-8 w-8 shrink-0 rounded-full bg-[var(--surface)]"
-                />
-              ) : (
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--surface)] text-sm font-semibold">
-                  {entry.username.slice(0, 1).toUpperCase()}
-                </div>
-              )}
+              <UserAvatarPreview
+                username={entry.username}
+                avatarUrl={entry.avatarUrl}
+                size={32}
+                className="h-8 w-8 shrink-0 rounded-full bg-[var(--surface)]"
+                fallbackClassName="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--surface)] text-sm font-semibold"
+              />
               <span className="min-w-0 flex-1 truncate text-sm text-[var(--fg)]">
                 {entry.username}
               </span>

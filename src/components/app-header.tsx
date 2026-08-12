@@ -1,6 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import type { SessionUser } from '#/domain/auth'
-import { UserAvatar } from '#/components/user-avatar'
+import { UserAvatarPreview } from '#/components/user-avatar-preview'
+import { APP_NAME } from '#/lib/app-brand'
 import { useSessionStore } from '#/session/store'
 
 type AppHeaderProps = {
@@ -36,7 +37,7 @@ export function AppHeader({ user }: AppHeaderProps) {
     <header className="app-header">
       <div className="app-header-start">
         <Link to="/" className="brand-mark app-header-brand">
-          Monkey Type
+          {APP_NAME}
         </Link>
 
         <nav className="app-header-nav" aria-label="Main">
@@ -49,16 +50,18 @@ export function AppHeader({ user }: AppHeaderProps) {
       </div>
 
       <div className="app-header-end">
-        <Link to="/profile" className="app-header-user">
-          <UserAvatar
+        <div className="app-header-user">
+          <UserAvatarPreview
             username={user.username}
             avatarUrl={user.avatarUrl}
             size={32}
             className="app-header-avatar"
             fallbackClassName="app-header-avatar app-header-avatar-fallback"
           />
-          <span className="app-header-username">{user.username}</span>
-        </Link>
+          <Link to="/profile" className="app-header-username">
+            {user.username}
+          </Link>
+        </div>
 
         {user.isAdmin ? (
           <div className="app-header-admin">

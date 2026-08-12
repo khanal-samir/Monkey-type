@@ -11,7 +11,7 @@ import {
   getSupabaseBrowserClient,
   isSupabaseConfigured,
 } from '#/lib/supabase/client'
-import { UserAvatar } from '#/components/user-avatar'
+import { UserAvatarPreview } from '#/components/user-avatar-preview'
 
 type LeaderboardBoardProps = {
   userId: string
@@ -51,7 +51,7 @@ function LeaderboardColumn({
               className={`lb-row${entry.rank === 1 ? ' lb-rank-1' : ''}`}
             >
               <span className="lb-rank">{entry.rank}</span>
-              <UserAvatar
+              <UserAvatarPreview
                 username={entry.username}
                 avatarUrl={entry.avatarUrl}
                 size={32}

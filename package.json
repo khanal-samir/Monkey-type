@@ -1,5 +1,5 @@
 {
-  "name": "monkey-type",
+  "name": "typer-durden",
   "private": true,
   "type": "module",
   "imports": {
@@ -19,14 +19,19 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.23",
     "@supabase/supabase-js": "^2.57.4",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-devtools": "latest",
     "@tanstack/react-router": "latest",
     "@tanstack/react-router-devtools": "latest",
     "@tanstack/react-start": "latest",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.31.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.1.18",
     "zustand": "^5.0.14"
   },

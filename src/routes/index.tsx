@@ -4,6 +4,8 @@ import { DurationTabs } from '#/components/duration-tabs'
 import { Scoreboard } from '#/components/scoreboard'
 import { TypingArena } from '#/components/typing-arena'
 import type { DurationSec } from '#/domain/typing-engine'
+import { UserAvatarPreview } from '#/components/user-avatar-preview'
+import { APP_NAME } from '#/lib/app-brand'
 import { useSessionStore } from '#/session/store'
 import { useSessionHydrated } from '#/session/use-session-hydrated'
 
@@ -38,25 +40,19 @@ function Home() {
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link to="/" className="brand-mark text-2xl font-semibold tracking-tight">
-            Monkey Type
+            {APP_NAME}
           </Link>
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
-            {user.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt=""
-                width={32}
-                height={32}
-                className="h-8 w-8 rounded-full bg-[var(--surface)]"
-              />
-            ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--surface)] text-sm font-semibold text-[var(--fg)]">
-                {user.username.slice(0, 1).toUpperCase()}
-              </div>
-            )}
+            <UserAvatarPreview
+              username={user.username}
+              avatarUrl={user.avatarUrl}
+              size={32}
+              className="h-8 w-8 rounded-full bg-[var(--surface)]"
+              fallbackClassName="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--surface)] text-sm font-semibold text-[var(--fg)]"
+            />
             <span className="text-sm text-[var(--fg)]">{user.username}</span>
           </div>
 
