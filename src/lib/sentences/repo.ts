@@ -3,6 +3,7 @@ import { assertSupabaseConfigured } from '#/lib/users/repo'
 import { isE2eFixtures } from '#/lib/e2e/env'
 import {
   fixtureCreateSentence,
+  fixtureFindSentenceById,
   fixtureListSentences,
   fixtureUpdateSentence,
 } from '#/lib/e2e/fixture-store'
@@ -29,6 +30,22 @@ export async function listSentences(options?: {
   const { data, error } = await query
   if (error) throw error
   return (data ?? []).map(mapSentenceRow)
+}
+
+export async function findSentenceById(id: string): Promise<Sentence | null> {
+  assertSupabaseConfigured()
+  if (isE2eFixtures()) {
+    return fixtureFindSentenceById(id)
+  }
+  const supabase = createSupabaseClient()
+  const { data, error } = await supabase
+    .from('sentences')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) throw error
+  return data ? mapSentenceRow(data) : null
 }
 
 export async function createSentence(input: {

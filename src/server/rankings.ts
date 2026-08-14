@@ -2,7 +2,10 @@ import { createServerFn } from '@tanstack/react-start'
 import { requireExistingUser } from '#/domain/access'
 import { localDateInTimezone } from '#/domain/daily-best'
 import { rankScoreboard, type ScoreboardEntry } from '#/domain/leaderboard'
-import { persistCompletedAttempt } from '#/domain/persist-attempt'
+import {
+  parseSubmitAttemptPayload,
+  submitTypedAttempt,
+} from '#/domain/submit-typed-attempt'
 import type { DurationSec } from '#/domain/typing-engine'
 import { TYPING_DURATIONS } from '#/domain/typing-engine'
 import {
@@ -11,6 +14,7 @@ import {
   listTodaysScoreboardRows,
   writeDailyBest,
 } from '#/lib/rankings/repo'
+import { findSentenceById } from '#/lib/sentences/repo'
 import {
   assertSupabaseConfigured,
   findUserById,
@@ -32,43 +36,16 @@ function emptyLeaderboards(): Record<DurationSec, ScoreboardEntry[]> {
 }
 
 export const submitAttempt = createServerFn({ method: 'POST' })
-  .validator(
-    (data: {
-      userId: string
-      durationSec: number
-      wpm: number
-      accuracy: number
-    }) => data,
-  )
+  .validator(parseSubmitAttemptPayload)
   .handler(async ({ data }) => {
     assertSupabaseConfigured()
-    await requireExistingUser(data.userId, accessDeps())
-
-    if (!isDurationSec(data.durationSec)) {
-      throw new Error('Invalid duration. Use 15, 30, or 60 seconds.')
-    }
-    if (!Number.isFinite(data.wpm) || data.wpm < 0) {
-      throw new Error('Invalid WPM.')
-    }
-    if (
-      !Number.isFinite(data.accuracy) ||
-      data.accuracy < 0 ||
-      data.accuracy > 100
-    ) {
-      throw new Error('Invalid accuracy.')
-    }
-
-    const result = await persistCompletedAttempt(
-      {
-        userId: data.userId,
-        durationSec: data.durationSec,
-        wpm: data.wpm,
-        accuracy: data.accuracy,
-      },
-      { insertAttempt, findDailyBest, writeDailyBest },
-    )
-
-    return result
+    return submitTypedAttempt(data, {
+      findUserById,
+      findSentenceById,
+      insertAttempt,
+      findDailyBest,
+      writeDailyBest,
+    })
   })
 
 export const getTodaysScoreboard = createServerFn({ method: 'POST' })

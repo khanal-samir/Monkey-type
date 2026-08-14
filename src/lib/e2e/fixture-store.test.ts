@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { SEED_ADMIN_EMAIL } from '#/domain/seed'
 import {
+  FIXTURE_SENTENCE_ID,
   fixtureCreateUser,
+  fixtureFindSentenceById,
   fixtureFindUserByEmail,
   fixtureInsertAttempt,
   fixtureListTodaysScoreboardRows,
@@ -12,6 +14,16 @@ import {
 describe('E2E fixture store', () => {
   beforeEach(() => {
     resetFixtureStore()
+  })
+
+  it('finds a seeded sentence by id and returns null for unknown ids', async () => {
+    const sentence = await fixtureFindSentenceById(FIXTURE_SENTENCE_ID)
+    expect(sentence).toEqual({
+      id: FIXTURE_SENTENCE_ID,
+      text: 'type fast now. keep going steady. finish strong here.',
+      isActive: true,
+    })
+    expect(await fixtureFindSentenceById('unknown-sentence-id')).toBeNull()
   })
 
   it('seeds the allowlisted admin', async () => {

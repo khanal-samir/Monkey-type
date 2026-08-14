@@ -85,17 +85,25 @@ export function TypingArena({
 
       const score = scoreAttempt(result)
       setCompletedScore(score)
-      setSaveStatus('saving')
       setSaveError(null)
       setDailyBestUpdated(false)
+
+      if (result.typed.length === 0) {
+        setSaveStatus('idle')
+        return
+      }
+
+      setSaveStatus('saving')
 
       try {
         const saved = await submitFn({
           data: {
             userId,
             durationSec: result.durationSec,
-            wpm: score.wpm,
-            accuracy: score.accuracy,
+            sentenceId: result.sentenceId,
+            typed: result.typed,
+            startedAtMs: result.startedAtMs,
+            endedAtMs: result.endedAtMs,
           },
         })
         setSaveStatus('saved')
@@ -214,6 +222,7 @@ export function TypingArena({
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
+      if (!e.isTrusted) return
       const engine = engineRef.current
       if (!engine) return
 
@@ -665,15 +674,17 @@ function ResultSummary({
         </div>
       </div>
       <p className="typing-hint mt-5 text-xs">
-        {saveStatus === 'saving'
-          ? 'Saving attempt…'
-          : saveStatus === 'saved'
-            ? dailyBestUpdated
-              ? `Saved · new daily best · ${result.durationSec}s`
-              : `Saved · daily best unchanged · ${result.durationSec}s`
-            : saveStatus === 'error'
-              ? (saveError ?? 'Save failed')
-              : 'Tab + Enter for next test'}
+        {result.typed.length === 0
+          ? 'Nothing typed · not saved'
+          : saveStatus === 'saving'
+            ? 'Saving attempt…'
+            : saveStatus === 'saved'
+              ? dailyBestUpdated
+                ? `Saved · new daily best · ${result.durationSec}s`
+                : `Saved · daily best unchanged · ${result.durationSec}s`
+              : saveStatus === 'error'
+                ? (saveError ?? 'Save failed')
+                : 'Tab + Enter for next test'}
       </p>
     </div>
   )

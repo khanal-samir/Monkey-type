@@ -170,6 +170,12 @@ export async function fixtureListSentences(options?: {
   return rows
 }
 
+export async function fixtureFindSentenceById(
+  id: string,
+): Promise<Sentence | null> {
+  return state.sentences.get(id) ?? null
+}
+
 export async function fixtureCreateSentence(input: {
   text: string
   isActive?: boolean
